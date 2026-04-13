@@ -93,11 +93,28 @@ you're about to stabilize, write the spec BEFORE the refactor.
   note whether the spec was updated as part of the change.
 
 ## Workflow
-- **Git:** Use feature branches for all work, merge to main via PR or explicit approval
-- **Issues:** Track bugs, features, and tasks as GitHub issues at dsdale24/big-cycle-investing
-  - Check open issues before starting work — they capture known problems and design thinking
-  - Reference issues in commits/PRs when addressing them (e.g., "Fixes #1")
-  - Create new issues for problems discovered during development
+
+### Branch naming
+- `explore/*` — Exploratory work. No spec required. Freedom to experiment.
+  Notebooks, new indicators, rough prototypes. Can merge to main.
+- `stable/*` — Stabilization work. **Must** update or create the relevant spec
+  BEFORE implementation. Must include tests that verify the spec. Spec must be
+  reviewed and stable before merging to main.
+- `fix/*` — Bug fixes. If the fix touches a specced component, update the spec
+  if the bug revealed a missing invariant.
+
+### GitHub labels
+- `exploring` — Component is in exploration phase, no spec required
+- `stabilizing` — Component needs a spec before further changes
+- `bug` — Something is broken
+- `data` — Data source or pipeline issue
+
+### Issues & PRs
+- Track bugs, features, and tasks as GitHub issues at dsdale24/big-cycle-investing
+- Check open issues before starting work — they capture known problems and design thinking
+- Reference issues in commits/PRs when addressing them (e.g., "Fixes #1")
+- Create new issues for problems discovered during development
+- PRs from `stable/*` branches must reference the spec they conform to
 
 ## Key constraints
 - All backtesting must be walk-forward: only use data available at each point in time
