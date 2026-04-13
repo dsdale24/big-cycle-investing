@@ -57,6 +57,9 @@ The spec starts loose in exploration areas and tightens as components stabilize.
 3. **Settled** — Spec is authoritative. Changes require updating the spec first, then
    the implementation. Tests enforce the spec.
 
+Components can move **backward** (Stabilizing → Exploring) if research reveals the
+approach was wrong. This is expected and healthy in a research project.
+
 ### Current spec status
 | Component | Status | Spec location |
 |-----------|--------|---------------|
@@ -100,15 +103,69 @@ you're about to stabilize, write the spec BEFORE the refactor.
 
 | Branch prefix | Purpose | Spec required? |
 |---------------|---------|----------------|
-| `explore/*` | Exploratory work — notebooks, new indicators, prototypes | No |
-| `stable/*` | Stabilization — spec must be updated before implementation, tests required | Yes |
-| `fix/*` | Bug fixes — update spec if the bug revealed a missing invariant | If specced |
+| `explore/{phase}/{feature}` | Exploratory work — notebooks, new indicators, prototypes | No |
+| `stable/{phase}/{feature}` | Stabilization — spec must be updated before implementation, tests required | Yes |
+| `fix/{description}` | Bug fixes — update spec if the bug revealed a missing invariant | If specced |
+| `docs/{description}` | Documentation, specs, CLAUDE.md changes | N/A |
+
+Examples: `explore/phase1/civilizational-indicators`, `stable/phase2/regime-classifier`, `fix/walk-forward-leak`
 
 **Tracking:** Bugs, features, and tasks are GitHub issues at dsdale24/big-cycle-investing.
 Labels: `exploring`, `stabilizing`, `bug`, `data`. See issue #13 for the full roadmap.
 
 Before starting work: check open issues (`gh issue list`). Reference issues in commits
-(e.g., "Fixes #1"). PRs from `stable/*` branches must reference the spec they conform to.
+(e.g., "Fixes #1"). Commits from `stable/*` branches must reference the spec they conform to.
+
+### Maker-checker model
+
+The main Claude instance is a **coordinator**, not a coder. All code is written by
+subagents and reviewed before merging.
+
+| Role | Who | Responsibility |
+|---|---|---|
+| **Coordinator** | Main instance | Spec management, task delegation, merge decisions. Does not write code. |
+| **Coding agent** | Subagent | Implements on a branch per the spec. Commits to the branch. |
+| **Review agent** | Subagent | Reviews implementation against the spec. Flags deviations, missing tests, edge cases. |
+
+**The flow:**
+1. Coordinator reads the spec (or writes/updates it if needed)
+2. Coordinator creates the branch and delegates to a coding agent with the spec and context
+3. Coding agent implements and commits on the branch (uses `isolation: "worktree"`)
+4. Coordinator delegates to a review agent to check implementation against spec
+5. Coordinator reviews findings, approves or sends back
+6. Coordinator merges to main
+
+**Worktrees:** Coding agents should use `isolation: "worktree"` so they work on an
+isolated copy of the repo. This prevents conflicts with files the coordinator or user
+has open, and produces a clean diff to review before merging.
+
+**Background by default:** Coding agents should run with `run_in_background: true`
+when the task is well-specified. The spec is the contract — if the spec is complete,
+the agent doesn't need to interrupt the user for clarification. The coordinator can
+continue other work and is notified when the agent completes. If the agent gets
+stuck, a review agent catches issues after completion; we don't lose time to
+mid-task interruptions.
+
+Exceptions (run foreground): when the spec is still being negotiated, when the
+task is a tight feedback loop, or when the coordinator needs the result immediately
+to proceed.
+
+**Effort budgets:** Every delegation prompt should include an effort estimate and
+early-exit conditions. The Agent tool doesn't track effort automatically, so the
+contract lives in the prompt. Example:
+
+> This task should take roughly 5-10 tool calls. If you exceed 20 calls without
+> clear progress, stop and report what's blocking you. If the spec is ambiguous,
+> stop and report the ambiguity rather than guessing. Do not expand scope beyond
+> what's in the spec.
+
+This gives the agent permission to stop and report rather than thrash. A stuck
+agent reporting "I'm blocked on X" is far more useful than one that spent 50
+tool calls rationalizing a wrong approach.
+
+**Why:** Separating writing from reviewing catches errors that flow-state coding misses.
+The coordinator stays at the spec level and never gets pulled into implementation details.
+This also prevents the anti-pattern of implementing first and rationalizing the spec after.
 
 ## Code standards
 
