@@ -271,6 +271,59 @@ fred:
     frequency: monthly
     description: US reserve holdings excluding gold (1950–)
 
+  # --- Education ---
+  FGCCSAQ027S:
+    name: Federal Student Loans Outstanding
+    category: education
+    frequency: quarterly
+    description: Federal government consumer credit, student loans (1945–)
+
+  CUSR0000SEEB:
+    name: Tuition CPI
+    category: education
+    frequency: monthly
+    description: CPI for tuition, school fees, and childcare — education cost inflation
+
+  LNS14027662:
+    name: Unemployment Rate (Bachelor's+)
+    category: education
+    frequency: monthly
+    description: Unemployment rate for workers with bachelor's degree or higher, 25+
+    start_override: "1992-01-01"
+
+  LNS14027660:
+    name: Unemployment Rate (HS Only)
+    category: education
+    frequency: monthly
+    description: Unemployment rate for HS graduates without college, 25+
+    start_override: "1992-01-01"
+
+  # --- Mobility ---
+  JTSQUR:
+    name: Quits Rate
+    category: mobility
+    frequency: monthly
+    description: Voluntary quits as % of employment — worker confidence and labor market dynamism
+    start_override: "2000-12-01"
+
+  RHORUSQ156N:
+    name: Homeownership Rate
+    category: mobility
+    frequency: quarterly
+    description: Owner-occupied housing units as % of total — high + rising prices = geographic lock-in
+
+  MORTGAGE30US:
+    name: 30-Year Mortgage Rate
+    category: mobility
+    frequency: weekly
+    description: Average 30-year fixed rate mortgage — rate lock-in reduces geographic mobility
+
+  HOUST:
+    name: Housing Starts
+    category: mobility
+    frequency: monthly
+    description: New privately-owned housing units started — supply constraint indicator
+
   # --- Human Capital & Civilizational Health ---
   A939RX0Q048SBEA:
     name: Real GDP per Capita
