@@ -151,12 +151,94 @@ fred:
     description: University of Michigan consumer sentiment index
 
   # --- Inequality & Internal Order ---
-  # Note: high-frequency inequality data is limited; these are proxies
+  GINIALLRF:
+    name: Gini Index (Family Income)
+    category: inequality
+    frequency: annual
+    description: Gini ratio of family income, all races (longest available, 1947–)
+
+  WFRBST01134:
+    name: Top 1% Wealth Share
+    category: inequality
+    frequency: quarterly
+    description: Share of total net worth held by the top 1%
+    start_override: "1989-01-01"
+
+  WFRBSB50215:
+    name: Bottom 50% Wealth Share
+    category: inequality
+    frequency: quarterly
+    description: Share of total net worth held by the bottom 50%
+    start_override: "1989-01-01"
+
   MEHOINUSA672N:
     name: Median Household Income
     category: inequality
     frequency: annual
     description: Real median household income
+
+  MEPAINUSA672N:
+    name: Median Personal Income
+    category: inequality
+    frequency: annual
+    description: Real median personal income
+
+  LES1252881600Q:
+    name: Median Weekly Real Earnings
+    category: inequality
+    frequency: quarterly
+    description: Median usual weekly real earnings, full-time workers
+
+  OPHNFB:
+    name: Labor Productivity
+    category: inequality
+    frequency: quarterly
+    description: Nonfarm business labor productivity (output per hour)
+
+  COMPRNFB:
+    name: Real Hourly Compensation
+    category: inequality
+    frequency: quarterly
+    description: Nonfarm business real compensation per hour (compare to productivity)
+
+  # --- Trust & Governance ---
+  USEPUINDXM:
+    name: Economic Policy Uncertainty
+    category: governance
+    frequency: monthly
+    description: Baker-Bloom-Davis policy uncertainty index (newspaper-based)
+    start_override: "1985-01-01"
+
+  # --- Fiscal Sustainability ---
+  FYFSGDA188S:
+    name: Federal Surplus/Deficit (% GDP)
+    category: fiscal
+    frequency: annual
+    description: Federal government surplus or deficit as percent of GDP (1929–)
+
+  FYOIGDA188S:
+    name: Federal Interest Payments (% GDP)
+    category: fiscal
+    frequency: annual
+    description: Federal government interest payments as percent of GDP — debt spiral warning
+
+  FDHBFIN:
+    name: Federal Debt Held by Foreign Investors
+    category: fiscal
+    frequency: quarterly
+    description: Foreign holdings of US federal debt — external financing dependency
+
+  FDHBFRBN:
+    name: Federal Debt Held by Federal Reserve
+    category: fiscal
+    frequency: quarterly
+    description: Fed holdings of federal debt — debt monetization proxy
+
+  FDEFX:
+    name: Defense Spending
+    category: external
+    frequency: quarterly
+    description: Federal defense spending (military power proxy)
 
   # --- International / External Order ---
   BOPGSTB:
@@ -165,7 +247,54 @@ fred:
     frequency: monthly
     description: US goods and services trade balance
 
-  # TODO: Find correct FRED series ID for China long-term rates
+  NETFI:
+    name: Current Account Balance (NIPA)
+    category: external
+    frequency: quarterly
+    description: Balance on current account — net capital flows (1947–)
+
+  IIPUSNETIA:
+    name: Net International Investment Position
+    category: external
+    frequency: annual
+    description: US net creditor/debtor position — shifted from largest creditor to largest debtor
+
+  TWEXBGSMTH:
+    name: Trade-Weighted USD (Broad, Monthly)
+    category: external
+    frequency: monthly
+    description: Broad trade-weighted dollar index, monthly (1973–)
+
+  TRESEGUSM052N:
+    name: Total Reserves excl Gold
+    category: external
+    frequency: monthly
+    description: US reserve holdings excluding gold (1950–)
+
+  # --- Human Capital & Civilizational Health ---
+  A939RX0Q048SBEA:
+    name: Real GDP per Capita
+    category: human_capital
+    frequency: quarterly
+    description: Real gross domestic product per capita
+
+  Y694RC1Q027SBEA:
+    name: R&D Spending
+    category: human_capital
+    frequency: quarterly
+    description: GDP component — research and development
+
+  SPDYNLE00INUSA:
+    name: Life Expectancy at Birth
+    category: human_capital
+    frequency: annual
+    description: US life expectancy — civilizational health metric (stalled/declined 2015–2020)
+
+  SPDYNIMRTINUSA:
+    name: Infant Mortality Rate
+    category: human_capital
+    frequency: annual
+    description: Infant mortality per 1000 live births — development quality proxy
 
 yahoo:
   # --- Asset Prices for Portfolio Construction ---
