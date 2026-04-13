@@ -41,6 +41,43 @@ what would my wealth-preservation outcomes have looked like?"
 See `docs/indicator_framework.md` for the full detailed breakdown with series IDs,
 coverage dates, and notes on using low-frequency (annual) data.
 
+## Spec-driven development
+
+This project uses spec-driven development with a progressive formalization approach.
+The spec starts loose in exploration areas and tightens as components stabilize.
+
+### The spec lifecycle
+1. **Exploring** — No formal spec. Move fast, try things, learn what works. Notebooks
+   and GitHub issues capture findings and hypotheses.
+2. **Stabilizing** — Write a spec in `docs/specs/` defining inputs, outputs, invariants,
+   and edge cases. Add tests that verify the spec. This happens when a component is
+   about to be depended on by other components.
+3. **Settled** — Spec is authoritative. Changes require updating the spec first, then
+   the implementation. Tests enforce the spec.
+
+### Current spec status
+| Component | Status | Spec location |
+|-----------|--------|---------------|
+| Data pipeline (`data_fetcher.py`) | Stabilizing | `docs/specs/data_pipeline.md` |
+| Indicators (`indicators.py`) | Exploring | — |
+| Backtester core (`backtester.py`) | Stabilizing | `docs/specs/backtester.md` |
+| Walk-forward constraint | Stabilizing | `docs/specs/backtester.md` |
+| Regime classifier | Exploring | — |
+| Strategy logic | Exploring | — |
+| Autoresearch loop | Not started | — |
+
+### How to apply this
+- **Before writing code:** Check if the component has a spec. If it does, read it first
+  and ensure your changes conform. If it doesn't, consider whether it should — is this
+  component being depended on by others?
+- **When exploring:** Don't write specs prematurely. Capture learnings in notebooks and
+  issues instead. A spec for something that's about to change is waste.
+- **When stabilizing:** Write the spec BEFORE refactoring. The spec defines what
+  "correct" means so you can test against it. Include: inputs, outputs, invariants
+  (things that must always be true), edge cases, and example test cases.
+- **When something breaks:** If a bug reveals a missing invariant, add it to the spec
+  and add a test. The spec grows from real failures, not hypothetical ones.
+
 ## Workflow
 - **Git:** Use feature branches for all work, merge to main via PR or explicit approval
 - **Issues:** Track bugs, features, and tasks as GitHub issues at dsdale24/big-cycle-investing
