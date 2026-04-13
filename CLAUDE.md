@@ -57,6 +57,9 @@ The spec starts loose in exploration areas and tightens as components stabilize.
 3. **Settled** — Spec is authoritative. Changes require updating the spec first, then
    the implementation. Tests enforce the spec.
 
+Components can move **backward** (Stabilizing → Exploring) if research reveals the
+approach was wrong. This is expected and healthy in a research project.
+
 ### Current spec status
 | Component | Status | Spec location |
 |-----------|--------|---------------|
@@ -100,15 +103,41 @@ you're about to stabilize, write the spec BEFORE the refactor.
 
 | Branch prefix | Purpose | Spec required? |
 |---------------|---------|----------------|
-| `explore/*` | Exploratory work — notebooks, new indicators, prototypes | No |
-| `stable/*` | Stabilization — spec must be updated before implementation, tests required | Yes |
-| `fix/*` | Bug fixes — update spec if the bug revealed a missing invariant | If specced |
+| `explore/{phase}/{feature}` | Exploratory work — notebooks, new indicators, prototypes | No |
+| `stable/{phase}/{feature}` | Stabilization — spec must be updated before implementation, tests required | Yes |
+| `fix/{description}` | Bug fixes — update spec if the bug revealed a missing invariant | If specced |
+| `docs/{description}` | Documentation, specs, CLAUDE.md changes | N/A |
+
+Examples: `explore/phase1/civilizational-indicators`, `stable/phase2/regime-classifier`, `fix/walk-forward-leak`
 
 **Tracking:** Bugs, features, and tasks are GitHub issues at dsdale24/big-cycle-investing.
 Labels: `exploring`, `stabilizing`, `bug`, `data`. See issue #13 for the full roadmap.
 
 Before starting work: check open issues (`gh issue list`). Reference issues in commits
-(e.g., "Fixes #1"). PRs from `stable/*` branches must reference the spec they conform to.
+(e.g., "Fixes #1"). Commits from `stable/*` branches must reference the spec they conform to.
+
+### Maker-checker model
+
+The main Claude instance is a **coordinator**, not a coder. All code is written by
+subagents and reviewed before merging.
+
+| Role | Who | Responsibility |
+|---|---|---|
+| **Coordinator** | Main instance | Spec management, task delegation, merge decisions. Does not write code. |
+| **Coding agent** | Subagent | Implements on a branch per the spec. Commits to the branch. |
+| **Review agent** | Subagent | Reviews implementation against the spec. Flags deviations, missing tests, edge cases. |
+
+**The flow:**
+1. Coordinator reads the spec (or writes/updates it if needed)
+2. Coordinator creates the branch and delegates to a coding agent with the spec and context
+3. Coding agent implements and commits on the branch
+4. Coordinator delegates to a review agent to check implementation against spec
+5. Coordinator reviews findings, approves or sends back
+6. Coordinator merges to main
+
+**Why:** Separating writing from reviewing catches errors that flow-state coding misses.
+The coordinator stays at the spec level and never gets pulled into implementation details.
+This also prevents the anti-pattern of implementing first and rationalizing the spec after.
 
 ## Code standards
 
