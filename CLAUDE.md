@@ -94,7 +94,9 @@ you're about to stabilize, write the spec BEFORE the refactor.
 
 ## Workflow
 
-### Branch naming
+### Branching
+**All work happens on branches. Never commit directly to main.**
+
 - `explore/*` — Exploratory work. No spec required. Freedom to experiment.
   Notebooks, new indicators, rough prototypes. Can merge to main.
 - `stable/*` — Stabilization work. **Must** update or create the relevant spec
