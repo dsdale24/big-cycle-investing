@@ -41,11 +41,11 @@ fred:
     frequency: monthly
     description: Effective federal funds rate
 
-  GS10:
+  DGS10:
     name: 10-Year Treasury Yield
     category: rates
-    frequency: monthly
-    description: Market yield on 10-year Treasury constant maturity
+    frequency: daily
+    description: Market yield on 10-year Treasury constant maturity (daily)
 
   GS2:
     name: 2-Year Treasury Yield
@@ -165,11 +165,7 @@ fred:
     frequency: monthly
     description: US goods and services trade balance
 
-  IRLTLT01CNM156N:
-    name: China Long-Term Interest Rate
-    category: external
-    frequency: monthly
-    description: Chinese long-term government bond yield
+  # TODO: Find correct FRED series ID for China long-term rates
 
 yahoo:
   # --- Asset Prices for Portfolio Construction ---
