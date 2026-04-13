@@ -62,8 +62,10 @@ coverage dates, and notes on using low-frequency (annual) data.
 
 ## Current status
 - **Phase 1 (done):** Data pipeline — 55 series across all categories, fetched and cached
-- **Phase 2 (done):** Exploration notebooks for civilizational indicators, then walk-forward backtester
-- **Phase 3 (in progress):** Iterate on strategy — see open GitHub issues for known problems
-- Regime classifier exists in `src/indicators.py` but is a simple heuristic — needs iteration
-- Walk-forward backtester exists in `src/backtester.py` — baseline results show Big Cycle v1
-  underperforming All Weather on risk-adjusted basis (see issue #2, #3)
+- **Phase 2 (done):** Exploration notebooks (01: financial, 02: civilizational indicators)
+- **Phase 3 (in progress):** Walk-forward backtester built, baseline results captured
+- **Next:** Fix baseline data issues (#1, #8, #6), then analyze predictive power (#9, #11)
+  before iterating on the strategy (#2, #3, #4). See issue #13 for full roadmap.
+- Baseline results: Big Cycle v1 (7.64% CAGR, 0.98 Sharpe) underperforms All Weather
+  (7.59% CAGR, 1.13 Sharpe) on risk-adjusted basis — known issues with data gaps and
+  crude regime classifier. See issues #1-#3.
