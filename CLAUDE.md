@@ -41,6 +41,13 @@ what would my wealth-preservation outcomes have looked like?"
 See `docs/indicator_framework.md` for the full detailed breakdown with series IDs,
 coverage dates, and notes on using low-frequency (annual) data.
 
+## Workflow
+- **Git:** Use feature branches for all work, merge to main via PR or explicit approval
+- **Issues:** Track bugs, features, and tasks as GitHub issues at dsdale24/big-cycle-investing
+  - Check open issues before starting work — they capture known problems and design thinking
+  - Reference issues in commits/PRs when addressing them (e.g., "Fixes #1")
+  - Create new issues for problems discovered during development
+
 ## Key constraints
 - All backtesting must be walk-forward: only use data available at each point in time
 - Backtest start date: 1975-01-01
@@ -55,5 +62,8 @@ coverage dates, and notes on using low-frequency (annual) data.
 
 ## Current status
 - **Phase 1 (done):** Data pipeline — 55 series across all categories, fetched and cached
-- **Phase 2 (next):** Exploration notebooks for civilizational indicators, then walk-forward backtester
+- **Phase 2 (done):** Exploration notebooks for civilizational indicators, then walk-forward backtester
+- **Phase 3 (in progress):** Iterate on strategy — see open GitHub issues for known problems
 - Regime classifier exists in `src/indicators.py` but is a simple heuristic — needs iteration
+- Walk-forward backtester exists in `src/backtester.py` — baseline results show Big Cycle v1
+  underperforming All Weather on risk-adjusted basis (see issue #2, #3)
