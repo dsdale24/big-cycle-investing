@@ -1,7 +1,10 @@
 {
   "fred": {
     "GFDEGDQ188S": {
-      "error": "Internal Server Error"
+      "rows": 204,
+      "start": "1975-01-01",
+      "end": "2025-10-01",
+      "path": "/Users/darren/Projects/big-cycle-investing/data/raw/fred/GFDEGDQ188S.parquet"
     },
     "HDTGPDUSQ163N": {
       "rows": 82,
@@ -46,10 +49,16 @@
       "path": "/Users/darren/Projects/big-cycle-investing/data/raw/fred/GS2.parquet"
     },
     "T10Y2Y": {
-      "error": "Internal Server Error"
+      "rows": 13009,
+      "start": "1976-06-01",
+      "end": "2026-04-10",
+      "path": "/Users/darren/Projects/big-cycle-investing/data/raw/fred/T10Y2Y.parquet"
     },
     "T10YIE": {
-      "error": "Internal Server Error"
+      "rows": 6072,
+      "start": "2003-01-02",
+      "end": "2026-04-10",
+      "path": "/Users/darren/Projects/big-cycle-investing/data/raw/fred/T10YIE.parquet"
     },
     "BAA10Y": {
       "rows": 10506,
@@ -82,13 +91,22 @@
       "path": "/Users/darren/Projects/big-cycle-investing/data/raw/fred/BOGMBASE.parquet"
     },
     "WALCL": {
-      "error": "Internal Server Error"
+      "rows": 1217,
+      "start": "2002-12-18",
+      "end": "2026-04-08",
+      "path": "/Users/darren/Projects/big-cycle-investing/data/raw/fred/WALCL.parquet"
     },
     "DTWEXBGS": {
-      "error": "Internal Server Error"
+      "rows": 5285,
+      "start": "2006-01-02",
+      "end": "2026-04-03",
+      "path": "/Users/darren/Projects/big-cycle-investing/data/raw/fred/DTWEXBGS.parquet"
     },
     "TWEXMMTH": {
-      "error": "Internal Server Error"
+      "rows": 540,
+      "start": "1975-01-01",
+      "end": "2019-12-01",
+      "path": "/Users/darren/Projects/big-cycle-investing/data/raw/fred/TWEXMMTH.parquet"
     },
     "GDPC1": {
       "rows": 204,
@@ -97,7 +115,10 @@
       "path": "/Users/darren/Projects/big-cycle-investing/data/raw/fred/GDPC1.parquet"
     },
     "UNRATE": {
-      "error": "Internal Server Error"
+      "rows": 615,
+      "start": "1975-01-01",
+      "end": "2026-03-01",
+      "path": "/Users/darren/Projects/big-cycle-investing/data/raw/fred/UNRATE.parquet"
     },
     "ICSA": {
       "rows": 2675,
@@ -196,10 +217,16 @@
       "path": "/Users/darren/Projects/big-cycle-investing/data/raw/fred/FDHBFRBN.parquet"
     },
     "FDEFX": {
-      "error": "Internal Server Error"
+      "rows": 204,
+      "start": "1975-01-01",
+      "end": "2025-10-01",
+      "path": "/Users/darren/Projects/big-cycle-investing/data/raw/fred/FDEFX.parquet"
     },
     "BOPGSTB": {
-      "error": "Internal Server Error"
+      "rows": 410,
+      "start": "1992-01-01",
+      "end": "2026-02-01",
+      "path": "/Users/darren/Projects/big-cycle-investing/data/raw/fred/BOPGSTB.parquet"
     },
     "NETFI": {
       "rows": 204,
@@ -224,6 +251,54 @@
       "start": "1975-01-01",
       "end": "2026-02-01",
       "path": "/Users/darren/Projects/big-cycle-investing/data/raw/fred/TRESEGUSM052N.parquet"
+    },
+    "FGCCSAQ027S": {
+      "rows": 204,
+      "start": "1975-01-01",
+      "end": "2025-10-01",
+      "path": "/Users/darren/Projects/big-cycle-investing/data/raw/fred/FGCCSAQ027S.parquet"
+    },
+    "CUSR0000SEEB": {
+      "rows": 579,
+      "start": "1978-01-01",
+      "end": "2026-03-01",
+      "path": "/Users/darren/Projects/big-cycle-investing/data/raw/fred/CUSR0000SEEB.parquet"
+    },
+    "LNS14027662": {
+      "rows": 411,
+      "start": "1992-01-01",
+      "end": "2026-03-01",
+      "path": "/Users/darren/Projects/big-cycle-investing/data/raw/fred/LNS14027662.parquet"
+    },
+    "LNS14027660": {
+      "rows": 411,
+      "start": "1992-01-01",
+      "end": "2026-03-01",
+      "path": "/Users/darren/Projects/big-cycle-investing/data/raw/fred/LNS14027660.parquet"
+    },
+    "JTSQUR": {
+      "rows": 303,
+      "start": "2000-12-01",
+      "end": "2026-02-01",
+      "path": "/Users/darren/Projects/big-cycle-investing/data/raw/fred/JTSQUR.parquet"
+    },
+    "RHORUSQ156N": {
+      "rows": 204,
+      "start": "1975-01-01",
+      "end": "2025-10-01",
+      "path": "/Users/darren/Projects/big-cycle-investing/data/raw/fred/RHORUSQ156N.parquet"
+    },
+    "MORTGAGE30US": {
+      "rows": 2676,
+      "start": "1975-01-03",
+      "end": "2026-04-09",
+      "path": "/Users/darren/Projects/big-cycle-investing/data/raw/fred/MORTGAGE30US.parquet"
+    },
+    "HOUST": {
+      "rows": 613,
+      "start": "1975-01-01",
+      "end": "2026-01-01",
+      "path": "/Users/darren/Projects/big-cycle-investing/data/raw/fred/HOUST.parquet"
     },
     "A939RX0Q048SBEA": {
       "rows": 204,
