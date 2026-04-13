@@ -66,17 +66,31 @@ The spec starts loose in exploration areas and tightens as components stabilize.
 | Strategy logic | Exploring | — |
 | Autoresearch loop | Not started | — |
 
+### Core principle: implementation follows spec, never the reverse
+
+The spec is the source of truth. When changing a stabilized or settled component:
+1. **Update the spec first** — define the new behavior, invariants, edge cases
+2. **Then implement** to match the spec
+3. **Then test** against the spec
+
+Never implement first and backfill the spec to match. That inverts the relationship
+and turns the spec into unreliable documentation. If you find the spec is wrong
+during implementation, stop — update the spec, then continue.
+
+For exploring components, there is no spec to follow. Move fast. But the moment
+you're about to stabilize, write the spec BEFORE the refactor.
+
 ### How to apply this
-- **Before writing code:** Check if the component has a spec. If it does, read it first
-  and ensure your changes conform. If it doesn't, consider whether it should — is this
-  component being depended on by others?
-- **When exploring:** Don't write specs prematurely. Capture learnings in notebooks and
-  issues instead. A spec for something that's about to change is waste.
+- **Before writing code:** Check if the component has a spec. If it does, read it.
+  If your planned changes conflict with the spec, update the spec first.
+- **When exploring:** No spec needed. Capture learnings in notebooks and issues.
 - **When stabilizing:** Write the spec BEFORE refactoring. The spec defines what
-  "correct" means so you can test against it. Include: inputs, outputs, invariants
-  (things that must always be true), edge cases, and example test cases.
+  "correct" means. Include: inputs, outputs, invariants (things that must always
+  be true), edge cases, and example test cases.
 - **When something breaks:** If a bug reveals a missing invariant, add it to the spec
   and add a test. The spec grows from real failures, not hypothetical ones.
+- **Every PR touching a specced component** should reference the relevant spec and
+  note whether the spec was updated as part of the change.
 
 ## Workflow
 - **Git:** Use feature branches for all work, merge to main via PR or explicit approval
