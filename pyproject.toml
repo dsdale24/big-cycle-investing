@@ -1,0 +1,18 @@
+[project]
+name = "big-cycle-investing"
+version = "0.1.0"
+description = "Long-view macro wealth-preservation strategy research"
+requires-python = ">=3.11"
+dependencies = [
+    "pandas>=2.0",
+    "fredapi>=0.5",
+    "yfinance>=0.2",
+    "pyyaml>=6.0",
+    "matplotlib>=3.7",
+    "plotly>=5.15",
+    "jupyter>=1.0",
+    "nbformat>=5.0",
+]
+
+[project.optional-dependencies]
+dev = ["ruff", "pytest"]
