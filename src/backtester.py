@@ -24,6 +24,12 @@ GOLD_DEFAULT_SPLICE = pd.Timestamp("2000-08-30")
 COMMODITIES_MONTHLY_TO_DAILY_SPLICE = pd.Timestamp("1986-01-02")
 COMMODITIES_DAILY_TO_FUTURES_SPLICE = pd.Timestamp("2000-08-23")
 
+# Bond ETF splicing (see docs/specs/backtester.md "ETF splicing", issue #31).
+# The splice date is NOT hardcoded — it is derived dynamically as the first
+# trading day of the ETF's history. TLT/SHY both began trading 2002-07-30.
+LONG_BONDS_ETF = "TLT"
+SHORT_BONDS_ETF = "SHY"
+
 
 # ---------------------------------------------------------------------------
 # Transaction cost schedule (see docs/specs/backtester.md, issue #6)
@@ -232,6 +238,101 @@ def _build_commodities_returns(
     return splice_returns(segments)
 
 
+def _long_bonds_approximation(data: dict[str, pd.DataFrame]) -> pd.Series:
+    """Duration-based daily return approximation from the 10Y yield (^TNX).
+
+    Preserved bitwise-identical to the pre-splicing logic: duration=8,
+    carry=yield[t-1]/252, clipped to +/-10% per day. See
+    docs/specs/backtester.md "Bond return approximation → Formula".
+    """
+    tnx = data.get("^TNX")
+    if tnx is None:
+        return pd.Series(dtype=float, index=pd.DatetimeIndex([]))
+    y = tnx["Close"] / 100
+    duration = 8.0
+    bond_ret = -duration * y.diff() + y.shift(1) / 252
+    return bond_ret.clip(-0.10, 0.10)
+
+
+def _short_bonds_approximation(data: dict[str, pd.DataFrame]) -> pd.Series:
+    """Duration-based daily return approximation from the 2Y yield (GS2).
+
+    Preserved bitwise-identical to the pre-splicing logic: duration=2,
+    carry=yield[t-1]/252, clipped to +/-5% per day. See
+    docs/specs/backtester.md "Bond return approximation → Formula".
+    """
+    gs2 = data.get("GS2_yield")
+    if gs2 is None:
+        return pd.Series(dtype=float, index=pd.DatetimeIndex([]))
+    y2 = gs2 / 100
+    short_bond_ret = -2.0 * y2.diff() + y2.shift(1) / 252
+    return short_bond_ret.clip(-0.05, 0.05)
+
+
+def _etf_total_returns(df: pd.DataFrame) -> pd.Series:
+    """Compute daily ETF total returns from Adj Close (fallback to Close).
+
+    ``Adj Close`` incorporates dividend reinvestment, which is essential for
+    bond ETFs whose coupons are distributed monthly. See
+    docs/specs/backtester.md "ETF splicing → Total-return sourcing".
+    """
+    if "Adj Close" in df.columns:
+        prices = df["Adj Close"]
+    else:
+        prices = df["Close"]
+    return prices.pct_change()
+
+
+def _build_long_bonds_returns(
+    data: dict[str, pd.DataFrame],
+    trading_index: pd.DatetimeIndex,
+) -> tuple[pd.Series, pd.Series]:
+    """Build spliced long_bonds returns: ^TNX approximation -> TLT.
+
+    See docs/specs/backtester.md "ETF splicing (mandatory for validated assets)".
+    """
+    segments: list[tuple[pd.Series, str]] = []
+
+    approx = _long_bonds_approximation(data)
+    if not approx.empty:
+        segments.append((approx, "^TNX"))
+
+    tlt = data.get(LONG_BONDS_ETF)
+    if tlt is not None:
+        segments.append((_etf_total_returns(tlt), LONG_BONDS_ETF))
+
+    if not segments:
+        empty = pd.Series(dtype=float, index=trading_index)
+        return empty, pd.Series(pd.NA, index=trading_index, dtype=object)
+
+    return splice_returns(segments)
+
+
+def _build_short_bonds_returns(
+    data: dict[str, pd.DataFrame],
+    trading_index: pd.DatetimeIndex,
+) -> tuple[pd.Series, pd.Series]:
+    """Build spliced short_bonds returns: GS2 approximation -> SHY.
+
+    See docs/specs/backtester.md "ETF splicing (mandatory for validated assets)".
+    """
+    segments: list[tuple[pd.Series, str]] = []
+
+    approx = _short_bonds_approximation(data)
+    if not approx.empty:
+        segments.append((approx, "GS2_yield"))
+
+    shy = data.get(SHORT_BONDS_ETF)
+    if shy is not None:
+        segments.append((_etf_total_returns(shy), SHORT_BONDS_ETF))
+
+    if not segments:
+        empty = pd.Series(dtype=float, index=trading_index)
+        return empty, pd.Series(pd.NA, index=trading_index, dtype=object)
+
+    return splice_returns(segments)
+
+
 def build_asset_returns(
     data: dict[str, pd.DataFrame],
     start: str = "1975-01-01",
@@ -273,22 +374,8 @@ def build_asset_returns(
         eq_ret = empty_datetime_series.copy()
         trading_index = pd.DatetimeIndex([])
 
-    tnx = data.get("^TNX")
-    if tnx is not None:
-        y = tnx["Close"] / 100
-        duration = 8.0
-        bond_ret = -duration * y.diff() + y.shift(1) / 252
-        bond_ret = bond_ret.clip(-0.10, 0.10)
-    else:
-        bond_ret = empty_datetime_series.copy()
-
-    gs2 = data.get("GS2_yield")
-    if gs2 is not None:
-        y2 = gs2 / 100
-        short_bond_ret = -2.0 * y2.diff() + y2.shift(1) / 252
-        short_bond_ret = short_bond_ret.clip(-0.05, 0.05)
-    else:
-        short_bond_ret = empty_datetime_series.copy()
+    long_bond_ret, long_bond_src = _build_long_bonds_returns(data, trading_index)
+    short_bond_ret, short_bond_src = _build_short_bonds_returns(data, trading_index)
 
     gold_ret, gold_src = _build_gold_returns(data, trading_index)
     comm_ret, comm_src = _build_commodities_returns(data, trading_index)
@@ -301,7 +388,7 @@ def build_asset_returns(
 
     returns = pd.DataFrame({
         "equities": eq_ret,
-        "long_bonds": bond_ret,
+        "long_bonds": long_bond_ret,
         "short_bonds": short_bond_ret,
         "gold": gold_ret,
         "commodities": comm_ret,
@@ -325,8 +412,8 @@ def build_asset_returns(
 
     sources = pd.DataFrame({
         "equities": "^GSPC",
-        "long_bonds": "^TNX",
-        "short_bonds": "GS2_yield",
+        "long_bonds": long_bond_src,
+        "short_bonds": short_bond_src,
         "gold": gold_src,
         "commodities": comm_src,
         "cash": "FEDFUNDS",
