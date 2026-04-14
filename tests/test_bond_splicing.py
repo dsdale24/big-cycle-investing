@@ -258,30 +258,120 @@ def test_short_bonds_post_splice_monthly_matches_shy(synthetic_data):
 @pytest.mark.spec
 def test_long_bonds_uses_adj_close_not_close(synthetic_data):
     """docs/specs/backtester.md "ETF splicing → Total-return sourcing":
-    ETF returns are computed from ``Adj Close``, not ``Close`` — dividends
-    must be reinvested."""
+    "ETF returns are computed from ``pct_change()`` of ``Adj Close``, which
+    incorporates dividend reinvestment. Bond ETFs distribute monthly coupon
+    income, and using ``Close`` would discard a material fraction of total
+    return."
+
+    Discriminating fixture: on a chosen post-splice day we simulate a
+    dividend ex-day by dropping ``Close`` by 1.5% while leaving ``Adj Close``
+    continuous. ``Adj Close.pct_change()`` and ``Close.pct_change()`` then
+    differ on that day, so the test would fail if the implementation read
+    ``Close`` instead of ``Adj Close``.
+    """
+    tlt = synthetic_data[LONG_BONDS_ETF].copy()
+    ex_day = pd.Timestamp("2003-03-17")  # mid-month, well past splice boundary
+    assert ex_day in tlt.index, "fixture must contain the ex-day"
+    # Dividend ex-day: Close drops 1.5% on this single day; Adj Close stays
+    # continuous (back-adjusted upstream). The Close column becomes the
+    # original Close (= Adj Close * 0.9) scaled down by 0.985 from ex_day on.
+    drop = 0.015
+    mask = tlt.index >= ex_day
+    tlt.loc[mask, "Close"] = tlt.loc[mask, "Close"] * (1.0 - drop)
+    synthetic_data = {**synthetic_data, LONG_BONDS_ETF: tlt}
+
+    adj_ret = tlt["Adj Close"].pct_change().loc[ex_day]
+    close_ret = tlt["Close"].pct_change().loc[ex_day]
+    # Sanity: the fixture genuinely discriminates between the two sources.
+    assert not np.isclose(adj_ret, close_ret, atol=1e-6), (
+        "Fixture failed to make Adj Close and Close pct_change differ on the "
+        "ex-day; test would not be a real discriminator."
+    )
+
     returns = build_asset_returns(synthetic_data, start="1975-01-01")
 
-    tlt = synthetic_data[LONG_BONDS_ETF]
-    # Fixture deliberately sets Close = Adj Close * 0.9, so pct_change
-    # values coincide except on the boundary day (first day after splice),
-    # where the 10% level jump between Close and Adj Close would reveal which
-    # column we used. The spliced boundary day's return must match Adj Close
-    # pct_change -- not Close pct_change.
-    boundary_day = tlt.index[1]  # 2002-07-31 (second trading day of TLT)
-    adj_ret = tlt["Adj Close"].pct_change().loc[boundary_day]
-    close_ret = tlt["Close"].pct_change().loc[boundary_day]
-    # For this fixture adj_ret == close_ret (multiplicative scale factor),
-    # so sameness does not discriminate. Instead check that swapping the
-    # input data (removing Adj Close) changes the result — we verify by
-    # reading the code path directly through Adj Close comparison.
-    assert returns.loc[boundary_day, "long_bonds"] == pytest.approx(
-        adj_ret, abs=1e-12
+    spliced = returns.loc[ex_day, "long_bonds"]
+    assert spliced == pytest.approx(adj_ret, abs=1e-12), (
+        "long_bonds spliced return on dividend ex-day must equal "
+        "Adj Close.pct_change() (got Close.pct_change()?)"
     )
-    # close_ret is computed only to prove the fixture structure; the monthly
-    # post-splice match test already pins Adj Close as the source.
-    assert close_ret == pytest.approx(adj_ret, abs=1e-12), (
-        "Fixture invariant: Close is a constant scale of Adj Close"
+    assert not np.isclose(spliced, close_ret, atol=1e-6), (
+        "long_bonds spliced return must not equal Close.pct_change() on the "
+        "dividend ex-day"
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.spec
+def test_short_bonds_uses_adj_close_not_close(synthetic_data):
+    """docs/specs/backtester.md "ETF splicing → Total-return sourcing":
+    same Adj-Close-required invariant as long_bonds, applied to SHY.
+
+    Discriminating fixture: simulate a SHY dividend ex-day by dropping
+    ``Close`` while leaving ``Adj Close`` continuous, then assert the
+    spliced ``short_bonds`` return on that day matches Adj Close, not Close.
+    """
+    shy = synthetic_data[SHORT_BONDS_ETF].copy()
+    ex_day = pd.Timestamp("2005-06-15")
+    assert ex_day in shy.index, "fixture must contain the ex-day"
+    drop = 0.015
+    mask = shy.index >= ex_day
+    shy.loc[mask, "Close"] = shy.loc[mask, "Close"] * (1.0 - drop)
+    synthetic_data = {**synthetic_data, SHORT_BONDS_ETF: shy}
+
+    adj_ret = shy["Adj Close"].pct_change().loc[ex_day]
+    close_ret = shy["Close"].pct_change().loc[ex_day]
+    assert not np.isclose(adj_ret, close_ret, atol=1e-6), (
+        "Fixture failed to make Adj Close and Close pct_change differ on the "
+        "ex-day; test would not be a real discriminator."
+    )
+
+    returns = build_asset_returns(synthetic_data, start="1975-01-01")
+
+    spliced = returns.loc[ex_day, "short_bonds"]
+    assert spliced == pytest.approx(adj_ret, abs=1e-12), (
+        "short_bonds spliced return on dividend ex-day must equal "
+        "Adj Close.pct_change() (got Close.pct_change()?)"
+    )
+    assert not np.isclose(spliced, close_ret, atol=1e-6), (
+        "short_bonds spliced return must not equal Close.pct_change() on the "
+        "dividend ex-day"
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.spec
+def test_long_bonds_falls_back_to_close_when_adj_close_missing(synthetic_data):
+    """docs/specs/backtester.md "ETF splicing → Total-return sourcing":
+    ``_etf_total_returns`` reads ``Adj Close`` when present and falls back to
+    ``Close`` otherwise. This test exercises the fallback branch by handing
+    in a TLT fixture with only a ``Close`` column and verifies the post-
+    splice ``long_bonds`` returns match ``Close.pct_change()`` cleanly.
+    """
+    tlt = synthetic_data[LONG_BONDS_ETF].copy()
+    # Drop Adj Close — leave only Close. The implementation should fall back.
+    tlt = tlt.drop(columns=["Adj Close"])
+    assert "Adj Close" not in tlt.columns
+    assert "Close" in tlt.columns
+    synthetic_data = {**synthetic_data, LONG_BONDS_ETF: tlt}
+
+    returns = build_asset_returns(synthetic_data, start="1975-01-01")
+
+    expected = tlt["Close"].pct_change()
+    # Pick a month fully inside the post-splice window (same shape as the
+    # post-splice monthly match test) and compare daily returns directly.
+    month_start = pd.Timestamp("2003-03-01")
+    mask_spliced = (
+        (returns.index.year == month_start.year)
+        & (returns.index.month == month_start.month)
+    )
+    got = returns.loc[mask_spliced, "long_bonds"]
+    exp = expected.reindex(got.index)
+    aligned = pd.DataFrame({"got": got, "expected": exp}).dropna(
+        subset=["expected"]
+    )
+    np.testing.assert_allclose(
+        aligned["got"].values, aligned["expected"].values, atol=1e-12, rtol=0
     )
 
 
