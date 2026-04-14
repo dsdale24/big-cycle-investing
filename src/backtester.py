@@ -30,6 +30,10 @@ COMMODITIES_DAILY_TO_FUTURES_SPLICE = pd.Timestamp("2000-08-23")
 LONG_BONDS_ETF = "TLT"
 SHORT_BONDS_ETF = "SHY"
 
+# Source labels that correspond to model-derived (not price-derived) returns.
+# See specs/backtester.md → Data quality.
+APPROXIMATION_SOURCES: frozenset[str] = frozenset({"^TNX", "GS2_yield"})
+
 
 # ---------------------------------------------------------------------------
 # Transaction cost schedule (see specs/backtester.md, issue #6)
@@ -85,6 +89,38 @@ class BacktestResult:
     config: dict  # strategy config used
     turnover: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))
     costs: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))
+    asset_sources: pd.DataFrame = field(default_factory=pd.DataFrame)
+
+    def approximation_exposure(self) -> pd.Series:
+        """Fraction of portfolio weight in model-approximation sources at each rebalance.
+
+        See specs/backtester.md → Data quality. Returns a series indexed by
+        ``weights_history.index`` with values in ``[0, 1]``. Each value is the
+        sum of rebalance weights whose source label at that date is in
+        ``APPROXIMATION_SOURCES``. Degrades gracefully to zeros when no source
+        data was tracked.
+        """
+        if self.weights_history.empty:
+            return pd.Series(dtype=float)
+
+        if self.asset_sources.empty:
+            return pd.Series(
+                0.0, index=self.weights_history.index, dtype=float
+            )
+
+        exposures: list[float] = []
+        for date in self.weights_history.index:
+            row_weights = self.weights_history.loc[date]
+            row_sources = self.asset_sources.loc[date]
+            exposure = 0.0
+            for asset, weight in row_weights.items():
+                if asset in row_sources.index:
+                    source = row_sources[asset]
+                    if source in APPROXIMATION_SOURCES:
+                        exposure += float(weight)
+            exposures.append(exposure)
+
+        return pd.Series(exposures, index=self.weights_history.index, dtype=float)
 
 
 # ---------------------------------------------------------------------------
@@ -606,6 +642,7 @@ def run_backtest(
     rebalance_freq: str = "QE",  # quarterly rebalancing
     config: dict | None = None,
     cost_rate: float | Callable[[pd.Timestamp], float] = default_cost_schedule,
+    asset_sources: pd.DataFrame | None = None,
 ) -> BacktestResult:
     """
     Run a walk-forward backtest.
@@ -735,6 +772,11 @@ def run_backtest(
         turnover_series = pd.Series(dtype=float)
         cost_series = pd.Series(dtype=float)
 
+    if asset_sources is not None:
+        sliced_sources = asset_sources.loc[start_dt:]
+    else:
+        sliced_sources = pd.DataFrame()
+
     return BacktestResult(
         snapshots=snapshots,
         portfolio_returns=port_returns,
@@ -745,6 +787,7 @@ def run_backtest(
         config=config or {},
         turnover=turnover_series,
         costs=cost_series,
+        asset_sources=sliced_sources,
     )
 
 
