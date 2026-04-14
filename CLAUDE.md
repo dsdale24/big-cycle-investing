@@ -141,7 +141,8 @@ subagents and reviewed before merging.
 4. Coordinator delegates to a review agent to check implementation against spec
 5. Coordinator reviews findings, approves or sends back
 6. Coordinator pushes the branch and opens a pull request (never merges locally to main)
-7. Work is landed by merging the PR — this preserves a reviewable artifact, keeps a searchable history, and gives the review agent (see issue #15) a surface to hook into
+7. Before merging, coordinator runs a **pre-merge review** of the PR — either via `/review-pr <number>` (which uses the canonical prompt at `docs/review_agent_prompt.md`) or by spawning a review agent manually. Merge only on PASS or PASS-WITH-NITS (see #15 for the Level 1/2/3 escalation path toward CI enforcement)
+8. Work is landed by merging the PR — this preserves a reviewable artifact, keeps a searchable history, and gives CI and the review agent a surface to hook into
 
 **Worktrees:** Coding agents should use `isolation: "worktree"` so they work on an
 isolated copy of the repo. This prevents conflicts with files the coordinator or user
