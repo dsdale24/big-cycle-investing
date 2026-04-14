@@ -3,7 +3,13 @@
   "permissions": {
     "allow": [
       "Edit",
-      "Write"
+      "Write",
+      "Bash(git:*)",
+      "Bash(pytest:*)",
+      "Bash(python -m pytest:*)",
+      "Bash(python scripts/*:*)",
+      "Bash(python3 scripts/*:*)",
+      "Bash(pip install:*)"
     ]
   },
   "hooks": {
