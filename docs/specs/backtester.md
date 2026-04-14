@@ -277,16 +277,40 @@ enough to compare strategies across decades.
 - `BacktestResult.turnover` and `BacktestResult.costs` are `pd.Series`
   indexed by rebalance date, same length as `weights`
 
+### Turnover semantics: intended vs. actual
+
+Turnover measures **actual** weight change at each rebalance: the gap
+between the `new_weights` the strategy produces and the `pre_rebalance_weights`
+observed right before the call to `strategy.allocate(...)`. Drift between
+rebalances — asset returns moving the portfolio away from the previous
+target — is NOT free. Re-targeting the original weights under drift is a
+real trade and produces real turnover.
+
+Consequence: a strategy that always returns the same target (e.g.,
+constant 60/40) incurs turnover proportional to drift, not zero turnover.
+
+A strategy that produces truly zero turnover must either (a) accept drift
+as the new target, i.e., return `pre_rebalance_weights` unchanged, or
+(b) operate under flat returns so drift does not occur.
+
 ### Test cases
-- A static strategy (weights never change) has
-  `turnover = 0` at every rebalance and total `costs.sum() == 0`
+- A strategy whose output at each rebalance equals the current
+  `pre_rebalance_weights` (drift-accepting strategy) has `turnover = 0` at
+  every rebalance and total `costs.sum() == 0`, regardless of the return
+  process
+- A constant-target static strategy under **flat** returns (no drift) has
+  `turnover = 0` at every rebalance — this is the degenerate case that
+  stresses the formula, not the realistic behavior
+- A constant-target static strategy under **non-flat** returns has
+  strictly positive turnover at most rebalances (drift forces re-targeting)
 - A strategy that swaps a 60/40 portfolio to 40/60 has `turnover = 0.2`
   (half the total absolute weight change)
 - A strategy that fully swaps to a disjoint allocation has
   `turnover = 1.0` and a single-rebalance cost equal to `cost_rate(date)`
 - `cost_rate = 0.0` produces a `BacktestResult` whose `costs` series is
-  all zeros and whose portfolio value trajectory matches the pre-cost
-  baseline to floating-point tolerance
+  all zeros and whose `portfolio_value` series equals
+  `(1 + portfolio_returns).cumprod()` to floating-point tolerance — this
+  is the explicit equivalence with the pre-cost compounding formula
 - The default schedule returns `0.003` for 1985-06-15, `0.001` for
   2005-06-15, and `0.0005` for 2020-06-15
 - For strategies with non-zero turnover, the post-cost CAGR is strictly
