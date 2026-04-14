@@ -35,8 +35,11 @@ Specifically:
 - Start date (default: 1975-01-01)
 
 ### Outputs
-- `pd.DataFrame` with columns for each asset class, indexed by date, containing
-  daily returns (as decimals, e.g., 0.01 = 1%)
+- `pd.DataFrame` with columns for each asset class, indexed by **business day**
+  (pandas `DatetimeIndex`, no weekends, holidays permitted to be present if they
+  carry a return), containing daily returns (as decimals, e.g., 0.01 = 1%)
+- The index dtype must be `datetime64[ns]`, not `object` — downstream code
+  relies on string-based `.loc` lookups and `.year` / `.month` accessors
 
 ### Asset class definitions
 | Asset class | Primary source | Pre-data proxy | Notes |
@@ -61,7 +64,12 @@ Specifically:
   at the splice point — the combined series is continuous across the splice date.
 
 ### Edge cases
-- Weekends/holidays: returns are 0 (or dates are skipped if using business days)
+- Weekends are **not** in the index — output is business-day frequency. Saturday
+  and Sunday timestamps must not appear in `returns.index` or `sources.index`.
+- Holidays (days when the market was closed): may appear in the index with a
+  return of 0 if the underlying source dropped that day, or may be omitted. Either
+  is acceptable — the invariant is that no NaN appears on any date that IS in the
+  index.
 - Pre-data periods: covered by proxy splicing (see below). Any remaining gap must
   be explicitly documented.
 
@@ -101,11 +109,13 @@ information.
 - The spliced daily series must compound to the source's native-frequency returns
   to within 1e-6 tolerance (a daily series built from PPIACO must compound to
   PPIACO's monthly returns over any full-month window)
-- No NaN values anywhere in 1975-01-01 → present
+- No NaN values on any business day in `1975-01-01 → present` (weekends are not in
+  the index, so the invariant is vacuous on weekends)
 - No gap or overlap at splice points — every trading day belongs to exactly one source
 - The source used on each date must be queryable from the output (e.g., a
   `source` column or companion Series) so analysis can distinguish proxy from
-  primary periods
+  primary periods. Source labels must be populated on every business day the
+  returns frame is populated on.
 
 ### Test cases
 - Given WPUSI019011 monthly returns of +1% for February 1980, every trading day
