@@ -22,7 +22,7 @@ dev = ["ruff", "pytest"]
 markers = [
   "unit: synthetic fixtures only; runs in worktrees and CI",
   "integration: uses real data/raw/ parquet cache; local only, skips if absent",
-  "spec: directly verifies an invariant listed in docs/specs/*.md",
+  "spec: directly verifies an invariant listed in specs/*.md",
 ]
 testpaths = ["tests"]
 # Fail the run if any test uses an unregistered marker.

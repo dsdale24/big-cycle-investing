@@ -1,6 +1,6 @@
 """Tests for bond ETF splicing in ``build_asset_returns``.
 
-Covers the test cases listed in ``docs/specs/backtester.md`` under
+Covers the test cases listed in ``specs/backtester.md`` under
 "Bond return approximation → ETF splicing (mandatory for validated assets)
 → Test cases (splicing)". Tests use small synthetic DataFrames so they do
 not require a FRED API key or network access.
@@ -120,7 +120,7 @@ def synthetic_data(trading_index: pd.DatetimeIndex) -> dict:
 @pytest.mark.unit
 @pytest.mark.spec
 def test_long_bonds_splice_boundary(synthetic_data):
-    """docs/specs/backtester.md "ETF splicing → Test cases (splicing)":
+    """specs/backtester.md "ETF splicing → Test cases (splicing)":
     the trading day immediately before the splice date is sourced from the
     duration approximation; the splice date itself is sourced from TLT."""
     _, sources = build_asset_returns(
@@ -135,7 +135,7 @@ def test_long_bonds_splice_boundary(synthetic_data):
 @pytest.mark.unit
 @pytest.mark.spec
 def test_short_bonds_splice_boundary(synthetic_data):
-    """docs/specs/backtester.md "ETF splicing → Test cases (splicing)":
+    """specs/backtester.md "ETF splicing → Test cases (splicing)":
     day before splice belongs to GS2 approximation; splice day belongs to SHY."""
     _, sources = build_asset_returns(
         synthetic_data, start="1975-01-01", return_sources=True
@@ -153,7 +153,7 @@ def test_short_bonds_splice_boundary(synthetic_data):
 @pytest.mark.unit
 @pytest.mark.spec
 def test_long_bonds_pre_splice_matches_approximation(synthetic_data):
-    """docs/specs/backtester.md "ETF splicing → Invariants":
+    """specs/backtester.md "ETF splicing → Invariants":
     Pre-splice returns must equal the pure-approximation regime exactly."""
     returns = build_asset_returns(synthetic_data, start="1975-01-01")
 
@@ -175,7 +175,7 @@ def test_long_bonds_pre_splice_matches_approximation(synthetic_data):
 @pytest.mark.unit
 @pytest.mark.spec
 def test_short_bonds_pre_splice_matches_approximation(synthetic_data):
-    """docs/specs/backtester.md "ETF splicing → Invariants":
+    """specs/backtester.md "ETF splicing → Invariants":
     Pre-splice short_bonds returns equal the pure duration approximation."""
     returns = build_asset_returns(synthetic_data, start="1975-01-01")
 
@@ -198,7 +198,7 @@ def test_short_bonds_pre_splice_matches_approximation(synthetic_data):
 @pytest.mark.unit
 @pytest.mark.spec
 def test_long_bonds_post_splice_monthly_matches_tlt(synthetic_data):
-    """docs/specs/backtester.md "ETF splicing → Test cases (splicing)":
+    """specs/backtester.md "ETF splicing → Test cases (splicing)":
     for a month fully inside the post-splice window, spliced monthly return
     equals the ETF monthly return within tolerance."""
     returns = build_asset_returns(synthetic_data, start="1975-01-01")
@@ -227,7 +227,7 @@ def test_long_bonds_post_splice_monthly_matches_tlt(synthetic_data):
 @pytest.mark.unit
 @pytest.mark.spec
 def test_short_bonds_post_splice_monthly_matches_shy(synthetic_data):
-    """docs/specs/backtester.md "ETF splicing → Test cases (splicing)":
+    """specs/backtester.md "ETF splicing → Test cases (splicing)":
     post-splice monthly return equals SHY's monthly return."""
     returns = build_asset_returns(synthetic_data, start="1975-01-01")
 
@@ -257,7 +257,7 @@ def test_short_bonds_post_splice_monthly_matches_shy(synthetic_data):
 @pytest.mark.unit
 @pytest.mark.spec
 def test_long_bonds_uses_adj_close_not_close(synthetic_data):
-    """docs/specs/backtester.md "ETF splicing → Total-return sourcing":
+    """specs/backtester.md "ETF splicing → Total-return sourcing":
     "ETF returns are computed from ``pct_change()`` of ``Adj Close``, which
     incorporates dividend reinvestment. Bond ETFs distribute monthly coupon
     income, and using ``Close`` would discard a material fraction of total
@@ -304,7 +304,7 @@ def test_long_bonds_uses_adj_close_not_close(synthetic_data):
 @pytest.mark.unit
 @pytest.mark.spec
 def test_short_bonds_uses_adj_close_not_close(synthetic_data):
-    """docs/specs/backtester.md "ETF splicing → Total-return sourcing":
+    """specs/backtester.md "ETF splicing → Total-return sourcing":
     same Adj-Close-required invariant as long_bonds, applied to SHY.
 
     Discriminating fixture: simulate a SHY dividend ex-day by dropping
@@ -342,7 +342,7 @@ def test_short_bonds_uses_adj_close_not_close(synthetic_data):
 @pytest.mark.unit
 @pytest.mark.spec
 def test_long_bonds_falls_back_to_close_when_adj_close_missing(synthetic_data):
-    """docs/specs/backtester.md "ETF splicing → Total-return sourcing":
+    """specs/backtester.md "ETF splicing → Total-return sourcing":
     ``_etf_total_returns`` reads ``Adj Close`` when present and falls back to
     ``Close`` otherwise. This test exercises the fallback branch by handing
     in a TLT fixture with only a ``Close`` column and verifies the post-
@@ -382,7 +382,7 @@ def test_long_bonds_falls_back_to_close_when_adj_close_missing(synthetic_data):
 @pytest.mark.unit
 @pytest.mark.spec
 def test_long_bonds_source_transitions_exactly_once(synthetic_data):
-    """docs/specs/backtester.md "ETF splicing → Test cases (splicing)":
+    """specs/backtester.md "ETF splicing → Test cases (splicing)":
     source label transitions exactly once, on the splice date, with no NaN
     labels on populated business days."""
     _, sources = build_asset_returns(
@@ -407,7 +407,7 @@ def test_long_bonds_source_transitions_exactly_once(synthetic_data):
 @pytest.mark.unit
 @pytest.mark.spec
 def test_short_bonds_source_transitions_exactly_once(synthetic_data):
-    """docs/specs/backtester.md "ETF splicing → Test cases (splicing)":
+    """specs/backtester.md "ETF splicing → Test cases (splicing)":
     short_bonds source transitions exactly once, on the SHY splice date."""
     _, sources = build_asset_returns(
         synthetic_data, start="1975-01-01", return_sources=True

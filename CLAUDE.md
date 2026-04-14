@@ -31,7 +31,7 @@ python scripts/fetch_data.py
 # Run notebooks
 cd notebooks && jupyter notebook
 
-# Tests (see docs/specs/testing_and_ci.md for full definitions)
+# Tests (see specs/testing_and_ci.md for full definitions)
 pytest                          # Everything (unit + integration + spec)
 pytest -m "not integration"     # Unit + spec-without-integration — what CI runs, quick feedback
 pytest -m integration           # Only tests that need the parquet cache — local, after fetching data
@@ -45,8 +45,7 @@ pytest -m spec                  # Only spec-anchored tests — audit "what enfor
 - `configs/series.yaml` — registry of ~55 data series with metadata
 - `scripts/fetch_data.py` — entry point to download all data
 - `notebooks/` — exploration and analysis (01: financial, 02: civilizational, 03: backtest)
-- `docs/indicator_framework.md` — full indicator taxonomy (11 categories, series IDs, coverage dates)
-- `docs/specs/` — component specifications (backtester, data pipeline)
+- `specs/` — component specifications and indicator taxonomy — top-level because specs are the primary entry point for development
 - `data/` — cached parquet files (gitignored), `data/manifest.json` tracks fetch results
 
 ## Spec-driven development
@@ -57,7 +56,7 @@ The spec starts loose in exploration areas and tightens as components stabilize.
 ### The spec lifecycle
 1. **Exploring** — No formal spec. Move fast, try things, learn what works. Notebooks
    and GitHub issues capture findings and hypotheses.
-2. **Stabilizing** — Write a spec in `docs/specs/` defining inputs, outputs, invariants,
+2. **Stabilizing** — Write a spec in `specs/` defining inputs, outputs, invariants,
    and edge cases. Add tests that verify the spec. This happens when a component is
    about to be depended on by other components.
 3. **Settled** — Spec is authoritative. Changes require updating the spec first, then
@@ -69,10 +68,10 @@ approach was wrong. This is expected and healthy in a research project.
 ### Current spec status
 | Component | Status | Spec location |
 |-----------|--------|---------------|
-| Data pipeline (`data_fetcher.py`) | Stabilizing | `docs/specs/data_pipeline.md` |
+| Data pipeline (`data_fetcher.py`) | Stabilizing | `specs/data_pipeline.md` |
 | Indicators (`indicators.py`) | Exploring | — |
-| Backtester core (`backtester.py`) | Stabilizing | `docs/specs/backtester.md` |
-| Walk-forward constraint | Stabilizing | `docs/specs/backtester.md` |
+| Backtester core (`backtester.py`) | Stabilizing | `specs/backtester.md` |
+| Walk-forward constraint | Stabilizing | `specs/backtester.md` |
 | Regime classifier | Exploring | — |
 | Strategy logic | Exploring | — |
 | Autoresearch loop | Not started | — |
@@ -149,7 +148,7 @@ The coordinator must NOT directly edit any file under these top-level directorie
 
 - `configs/` — runtime configuration consumed by code
 - `data/` — cached data artifacts (gitignored, but listed for completeness)
-- `docs/` — research notes, framework docs, validation reports
+- `docs/` — research notes
 - `notebooks/` — exploratory analysis (Python in JSON form is still code)
 - `scripts/` — runnable Python scripts
 - `src/` — production code
@@ -192,7 +191,7 @@ Implications:
   exceeds benefit when there's no real implementation work to do.
 - Tests that depend on the parquet cache at `data/raw/` will work because the
   cache is in the main checkout. The `@pytest.mark.integration` marker
-  (defined in `docs/specs/testing_and_ci.md`) still exists for tests that need
+  (defined in `specs/testing_and_ci.md`) still exists for tests that need
   real data — they run locally, not in CI.
 
 Worktree-based isolation may be revisited in a future Claude Code version

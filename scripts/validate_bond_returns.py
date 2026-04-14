@@ -5,7 +5,7 @@ Compares synthetic daily bond returns (from ``build_asset_returns`` in
 ``src.backtester``) against TLT (long bonds) and SHY (short bonds) total
 returns sourced from Yahoo Finance.
 
-See ``docs/specs/backtester.md`` section "Bond return approximation" for the
+See ``specs/backtester.md`` section "Bond return approximation" for the
 formula and accuracy threshold being checked:
 
     daily_return = -duration * (yield[t] - yield[t-1]) + yield[t-1] / 252

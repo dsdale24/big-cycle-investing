@@ -99,6 +99,6 @@ on date X?" This is currently handled by the backtester truncating data with
 
 ## What this spec does NOT cover
 
-- Which specific series to include (that's `docs/indicator_framework.md`)
+- Which specific series to include (that's `specs/indicator_framework.md`)
 - How to handle proxy splicing for pre-2000 data (that's the backtester's concern)
 - Data quality validation beyond "did the fetch succeed"
