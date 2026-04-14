@@ -120,8 +120,17 @@ Examples: `explore/phase1/civilizational-indicators`, `stable/phase2/regime-clas
 **Tracking:** Bugs, features, and tasks are GitHub issues at dsdale24/big-cycle-investing.
 Labels: `exploring`, `stabilizing`, `bug`, `data`. See issue #13 for the full roadmap.
 
-Before starting work: check open issues (`gh issue list`). Reference issues in commits
-(e.g., "Fixes #1"). Commits from `stable/*` branches must reference the spec they conform to.
+**At session start (or when resuming after a gap):**
+- If `.claude/skills/changelog-check/state.json`'s `last_checked` is more than
+  1 day old, invoke `/skill changelog-check` to see if any Claude Code
+  updates affect this project's workflow. Claude Code ships frequently
+  (multiple releases most weeks), so a daily cadence catches fixes close to
+  when they land. The skill reports new entries in three buckets (ticks #33
+  / likely relevant / worth noting) and asks the coordinator what to act on.
+- Check open issues with `gh issue list` before starting substantive work.
+
+Reference issues in commits (e.g., "Fixes #1"). Commits from `stable/*`
+branches must reference the spec they conform to.
 
 ### Maker-checker model
 

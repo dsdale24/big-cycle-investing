@@ -1,0 +1,5 @@
+{
+  "last_version": "2.1.108",
+  "last_checked": "2026-04-14",
+  "notes": "2.1.107/108: 0 #33 ticks; relevant: ENABLE_PROMPT_CACHING_1H, Skill-tool discovers built-in slash commands, /recap feature."
+}
