@@ -12,10 +12,10 @@ this document is what makes "stabilizing" mean "tested".
 ## Scope
 
 - Test categories and pytest markers
-- Where each category can run (local, worktree, CI)
+- Where each category can run (local, CI, agent sessions)
 - What CI's required check runs
 - How `@pytest.mark.spec` links tests to spec invariants
-- Worktree testing boundary (consolidated here; CLAUDE.md references this spec)
+- Where each category runs (consolidated here; CLAUDE.md references this spec)
 
 What this spec does NOT cover: coverage thresholds, mutation testing,
 property-based testing, perf/benchmark tests, fixtures for specific components.
@@ -35,14 +35,14 @@ one second per test.
 **Cannot:** read `data/raw/**`, call FRED/Yahoo APIs, require `FRED_API_KEY`,
 write outside `tmp_path`, depend on wall-clock time.
 
-**Runs in:** worktrees, CI, local — everywhere.
+**Runs in:** CI, local, agent sessions — everywhere.
 
 **Default for new tests.** If a test can be written as unit, it must be.
 
 ### `@pytest.mark.integration`
 
 **What it means:** The test reads the real parquet cache at `data/raw/` or
-otherwise depends on state the worktree doesn't have.
+otherwise depends on state CI or fresh clones don't have.
 
 **Can:** read `data/raw/**/*.parquet`, use cached FRED/Yahoo data.
 
@@ -53,9 +53,8 @@ otherwise depends on state the worktree doesn't have.
 fixture (see "Conftest helpers" below). Skipping is **required** — a test that
 errors instead of skips on a missing cache is a bug in the test.
 
-**Runs in:** local only. Not in CI (no cache strategy). Not in worktrees by
-default — if an agent needs integration verification, it reports back rather
-than running.
+**Runs in:** local and agent sessions (the cache is in the main checkout
+that agents work in). Not in CI — no cache strategy yet.
 
 ### `@pytest.mark.spec`
 
@@ -92,7 +91,7 @@ auditing whether a spec is covered.
 | Command | What runs | Where to use it |
 |---|---|---|
 | `pytest` | Everything (unit + integration + spec) | Local dev, full confidence run |
-| `pytest -m "not integration"` | Unit + spec-without-integration | CI, worktrees, quick feedback |
+| `pytest -m "not integration"` | Unit + spec-without-integration | CI, quick feedback |
 | `pytest -m integration` | Only tests that need the parquet cache | Local, after fetching data |
 | `pytest -m spec` | Only spec-anchored tests | Audit: "what enforces this spec?" |
 
@@ -114,8 +113,8 @@ DATA_RAW = Path(__file__).parent.parent / "data" / "raw"
 @pytest.fixture
 def require_cache():
     """Skip the test if the FRED/Yahoo parquet cache is not populated.
-    Integration tests depend on real cached data; worktrees and CI typically
-    don't have it."""
+    Integration tests depend on real cached data; CI and fresh clones
+    typically don't have it."""
     if not DATA_RAW.exists() or not any(DATA_RAW.rglob("*.parquet")):
         pytest.skip("parquet cache at data/raw/ not populated — run scripts/fetch_data.py")
 ```
@@ -148,7 +147,7 @@ before any test runs.
 ```toml
 [tool.pytest.ini_options]
 markers = [
-  "unit: synthetic fixtures only; runs in worktrees and CI",
+  "unit: synthetic fixtures only; runs in CI and locally",
   "integration: uses real data/raw/ parquet cache; local only, skips if absent",
   "spec: directly verifies an invariant listed in docs/specs/*.md",
 ]
@@ -158,24 +157,21 @@ testpaths = ["tests"]
 addopts = ["--strict-markers"]
 ```
 
-## Worktree testing boundary
+## Where each category runs
 
-Subagent worktrees have:
-- A fresh checkout of the repo
-- `.env` auto-copied via `.worktreeinclude` (so `scripts/fetch_data.py` can run
-  in principle — but it would fetch into the worktree's own `data/`, not the
-  main cache)
-- NO populated `data/raw/` parquet cache
+Coding agents work in the coordinator's main checkout (see CLAUDE.md
+"Coding agents work in the main checkout, not worktrees"). The full
+`data/raw/` parquet cache and `.env` are present, so:
 
-Consequences for agents:
-- `pytest -m "not integration"` runs fine — same as CI
-- `pytest -m integration` will skip every integration test (cache absent). That
-  is correct behavior, not a failure.
-- If an agent needs integration-level verification (e.g., a compounding identity
-  check against real FRED data), it reports back rather than re-fetching. Per
-  CLAUDE.md "Reporting is success, workarounds are failure".
+- `pytest -m "not integration"` runs fine — what CI runs
+- `pytest -m integration` runs against the real cache, same as the
+  coordinator would run it
+- `@pytest.mark.integration` tests skip cleanly when run on a machine
+  with no cache (e.g., CI or a fresh clone) via the `require_cache`
+  fixture
 
-The coordinator runs integration tests in the main repo after the agent returns.
+CI never runs integration tests (no cache strategy). Locally, integration
+tests are part of the full-confidence run before opening a PR.
 
 ## CI job design
 
@@ -205,7 +201,7 @@ cache. Any of those is a test-categorization bug (the test should be
 Yes, this spec's own rules are testable. The conftest check above is effectively
 the test for "every test has a marker". Additional invariants:
 
-- `pytest -m "not integration"` from a fresh worktree (no `data/raw/`) exits 0
+- `pytest -m "not integration"` from a fresh clone (no `data/raw/`) exits 0
   with the existing test suite — no skips that look like failures.
 - Adding a new test file without any marker causes `pytest` to fail at
   collection (not error at runtime).
@@ -222,7 +218,8 @@ the test for "every test has a marker". Additional invariants:
    as well, and ensure their docstrings reference `docs/specs/backtester.md`.
 4. Create `.github/workflows/tests.yml` running `pytest -m "not integration"`.
 5. Update `CLAUDE.md` "Setup & commands" with the four `pytest` invocations
-   above, and update "Worktree testing boundary" to reference this spec.
+   above. The "Where each category runs" section is canonical here; CLAUDE.md
+   may reference it.
 
 ## What this spec does NOT cover
 

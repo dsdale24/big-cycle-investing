@@ -11,17 +11,5 @@
       "Bash(python3 scripts/*:*)",
       "Bash(pip install:*)"
     ]
-  },
-  "hooks": {
-    "WorktreeCreate": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/create_worktree_from_head.py"
-          }
-        ]
-      }
-    ]
   }
 }

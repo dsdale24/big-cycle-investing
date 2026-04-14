@@ -1,9 +1,0 @@
-# Gitignored files to auto-copy into subagent worktrees.
-# Gitignore syntax. Only matches files that are BOTH listed here AND gitignored
-# get copied (tracked files are never duplicated).
-#
-# Purpose: let coding agents access .env (FRED_API_KEY, etc.) so they can run
-# scripts/fetch_data.py and verify against real data. Without this, agents
-# either skip verification or violate the "report-don't-patch" rule by copying
-# .env in manually.
-.env
