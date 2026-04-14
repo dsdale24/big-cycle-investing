@@ -1,7 +1,7 @@
 # Backtester Specification
 
 Status: **Stabilizing**
-Last updated: 2026-04-14 (bond ETF splicing required by validation — see issues #8, #31)
+Last updated: 2026-04-14 (data-quality surface added to BacktestResult — resolves the pre-2002 uncertainty open question from #31)
 
 ## Purpose
 
@@ -196,12 +196,9 @@ preserve the same total-return semantics as the pre-splice series.
 
 ### Known open questions
 
-- **Pre-2002 uncertainty communication.** The 1975 → 2002-07-29 window
-  uses the duration approximation and has no ETF benchmark to bound its
-  error. The convexity-bias pattern observed post-2002 is likely also
-  present pre-2002 (rates fell sharply over 1981-1999). Surfacing this
-  in `BacktestResult` metadata so analysis can flag pre-2002 bond
-  exposure as approximation-only is open. Tracked separately.
+- ~~**Pre-2002 uncertainty communication.**~~ **Resolved** — see the
+  "Data quality" section below for `BacktestResult.asset_sources` and
+  `approximation_exposure()`.
 - **1990s hybrid.** ICE BofA Treasury indices on FRED extend the
   validation window earlier than TLT/SHY; could tighten the pre-2002
   estimate without requiring a third splice. Out of scope for #31.
@@ -341,6 +338,13 @@ class PortfolioSnapshot:
   - `turnover: pd.Series` — turnover (in [0, 1]) at each rebalance date
   - `costs: pd.Series` — transaction cost paid at each rebalance, in
     return units (cost / portfolio_value_at_rebalance)
+  - `asset_sources: pd.DataFrame` — same index and columns as
+    `asset_returns`; each cell holds the string source label that produced
+    that day's return for that asset (e.g., `"^TNX"`, `"TLT"`, `"GC=F"`,
+    `"WPUSI019011"`). Lifted from the `sources` DataFrame returned by
+    `build_asset_returns(..., return_sources=True)` so analysts can recover
+    the data quality of any backtest period without re-fetching. See "Data
+    quality" below for how this surfaces in analysis.
   - Config used
 
 ### Invariants
@@ -494,6 +498,87 @@ strategy backtest. Refinements can be added without changing the
 - Sortino ratio (downside deviation only)
 - Per-decade breakdown
 - Tax-adjusted return (short-term vs long-term gains)
+
+## Data quality
+
+### Purpose
+
+Some date ranges in the asset-returns frame come from model formulas
+rather than real prices. Backtests that lean heavily on those periods
+should be flagged so analysts don't compare strategies on apples-to-oranges
+data. This section defines what the spec considers "approximation only"
+and how that surfaces on `BacktestResult`.
+
+### Approximation sources
+
+The following source labels are derived from a model formula, not from
+real price or return data:
+
+- `^TNX` — `long_bonds` returns from the duration approximation
+  (1975 → 2002-07-29, before TLT splice)
+- `GS2_yield` — `short_bonds` returns from the duration approximation
+  (1975 → 2002-07-29, before SHY splice)
+
+Exposed as a module-level constant:
+
+```python
+APPROXIMATION_SOURCES: frozenset[str] = frozenset({"^TNX", "GS2_yield"})
+```
+
+**Proxy sources are NOT approximation sources.** FRED indices used in
+place of unavailable price series (`WPUSI019011` for gold, `PPIACO` and
+`DCOILWTICO` for commodities) are imperfect tracking of real data, not
+derived from a model. They have their own documented tracking error (see
+"Proxy series splicing → Known limitations") but the uncertainty class
+is different. Analysts who want to flag proxy exposure too can compose
+their own predicate against `BacktestResult.asset_sources` directly —
+the spec does not collapse the distinction.
+
+### `BacktestResult.approximation_exposure() -> pd.Series`
+
+Returns a series indexed by **rebalance dates** (matching
+`weights_history.index`), valued in `[0, 1]`. Each value is the fraction
+of portfolio weight at that rebalance allocated to assets whose source on
+that date is in `APPROXIMATION_SOURCES`. Useful for plotting alongside
+cumulative returns to show when a strategy leaned on approximated data.
+
+Defined at rebalance points rather than daily because (a) intra-rebalance
+weight drift is a small effect for the use case (flagging "is this result
+trustworthy?"), (b) it keeps the series cardinality manageable for
+plotting, and (c) it composes cleanly with the existing per-rebalance
+metadata (`weights_history`, `turnover`, `costs`).
+
+### Invariants
+
+- `asset_sources.index` equals `asset_returns.index`
+- `asset_sources.columns` equals `asset_returns.columns`
+- Every cell of `asset_sources` is a non-empty string on every business
+  day where `asset_returns` has a non-NaN value (no NaN, no empty)
+- `approximation_exposure()` returns values in `[0, 1]` for every entry
+- For a backtest entirely after 2002-07-30 with any bond weights,
+  `approximation_exposure()` is all zeros (post-splice; bond returns come
+  from TLT/SHY)
+- For a backtest with zero bond weights at every rebalance,
+  `approximation_exposure()` is all zeros regardless of period
+
+### Test cases
+
+- A backtest from 2010-01-01 with a 50/50 long_bonds/equities static
+  strategy has `approximation_exposure()` all zeros (post-splice)
+- A backtest from 1980-01-01 to 1985-12-31 with a 50/50
+  long_bonds/equities static strategy has `approximation_exposure()`
+  equal to 0.5 at every rebalance (pre-splice; bonds are pure
+  approximation)
+- A backtest spanning 2000-01-01 to 2005-12-31 with constant 100%
+  long_bonds shows `approximation_exposure()` transitioning from 1.0
+  (rebalances pre-2002-07-30) to 0.0 (rebalances post)
+- A backtest with a strategy that allocates 100% equities/cash at every
+  rebalance has `approximation_exposure()` all zeros, regardless of
+  period (no bond exposure)
+- Adding a new approximation source to `APPROXIMATION_SOURCES` and
+  rerunning a fixed backtest produces a strictly higher (or equal)
+  `approximation_exposure()` series — the metric is monotone in the
+  source set
 
 ---
 
