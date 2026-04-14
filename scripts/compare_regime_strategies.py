@@ -1,0 +1,132 @@
+"""Compare BigCycle binary vs scored vs AllWeather over the cached backtest period.
+
+Produces a side-by-side metrics table on stdout and writes a markdown
+report at ``docs/research/regime_scoring_comparison.md``. This is a
+reporting script — always exits 0, never asserts the new approach must win.
+
+See issue #2.
+"""
+
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+import pandas as pd
+
+ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from src.backtester import (
+    AllWeatherStrategy,
+    BigCycleStrategy,
+    build_asset_returns,
+    compute_metrics,
+    run_backtest,
+)
+from src.data_fetcher import load_all_fred, load_all_yahoo
+
+
+START = "1980-01-01"
+END = "2024-12-31"
+
+
+def _run(label: str, strategy, asset_returns, indicator_data) -> dict:
+    result = run_backtest(
+        strategy=strategy,
+        asset_returns=asset_returns,
+        indicator_data=indicator_data,
+        start=START,
+    )
+    metrics = compute_metrics(result)
+    metrics["label"] = label
+    return metrics
+
+
+def _format_row(m: dict) -> str:
+    return (
+        f"| {m['label']} | {m['cagr']:.2%} | {m['volatility']:.2%} | {m['sharpe']:.2f} "
+        f"| {m['max_drawdown']:.1%} | {m['calmar']:.2f} | {m['average_turnover']:.3f} |"
+    )
+
+
+def main() -> int:
+    fred = load_all_fred()
+    yahoo = load_all_yahoo()
+    data = {**fred, **yahoo}
+
+    asset_returns, _ = build_asset_returns(data, start=START, return_sources=True)
+    asset_returns = asset_returns.loc[:END]
+
+    indicator_data = {**fred}
+
+    runs = [
+        _run("AllWeather", AllWeatherStrategy(), asset_returns, indicator_data),
+        _run("BigCycle binary", BigCycleStrategy(mode="binary"), asset_returns, indicator_data),
+        _run("BigCycle scored", BigCycleStrategy(mode="scored"), asset_returns, indicator_data),
+    ]
+
+    header = (
+        "| Strategy | CAGR | Vol | Sharpe | Max DD | Calmar | Avg Turnover |\n"
+        "|---|---|---|---|---|---|---|"
+    )
+    table_rows = [_format_row(m) for m in runs]
+    table = "\n".join([header, *table_rows])
+
+    period = f"{runs[0]['start'].date()} -> {runs[0]['end'].date()} ({runs[0]['years']:.1f}y)"
+
+    print(f"\nPeriod: {period}\n")
+    print(table)
+    print()
+
+    aw, binary, scored = runs
+    interpretation_bits = []
+    interpretation_bits.append(
+        f"Over {period}, the score-blended BigCycle variant posted a Sharpe of "
+        f"{scored['sharpe']:.2f} vs {binary['sharpe']:.2f} for the binary version "
+        f"and {aw['sharpe']:.2f} for AllWeather."
+    )
+    d_sharpe = scored["sharpe"] - binary["sharpe"]
+    d_cagr = scored["cagr"] - binary["cagr"]
+    d_dd = scored["max_drawdown"] - binary["max_drawdown"]
+    if d_sharpe > 0.02:
+        verdict = "an improvement over the binary classifier"
+    elif d_sharpe < -0.02:
+        verdict = "a regression vs the binary classifier"
+    else:
+        verdict = "statistically indistinguishable from the binary classifier"
+    interpretation_bits.append(
+        f"The continuous scoring path is {verdict} on Sharpe "
+        f"(delta {d_sharpe:+.2f}); CAGR delta {d_cagr:+.2%}, max-drawdown delta "
+        f"{d_dd:+.2%} (positive means shallower drawdown)."
+    )
+
+    report = (
+        "# Regime scoring comparison (issue #2)\n\n"
+        f"Backtest period: **{period}**. Rebalance: quarterly. Costs: default schedule.\n\n"
+        "## Results\n\n"
+        f"{table}\n\n"
+        "## Interpretation\n\n"
+        + " ".join(interpretation_bits)
+        + "\n\n"
+        "## Method\n\n"
+        "- `AllWeather`: Bridgewater-style fixed mix (30/40/15/7.5/7.5).\n"
+        "- `BigCycle binary`: original discrete regime classifier — hard thresholds\n"
+        "  on yield curve, inflation, and real rate pick one of four regimes and\n"
+        "  apply the full corresponding nudge from `REGIME_NUDGES`.\n"
+        "- `BigCycle scored`: consumes `src.indicators.regime_classifier()` to\n"
+        "  produce a continuous score in `[0, 1]` per regime, then blends the\n"
+        "  per-regime nudges weighted by those scores.\n"
+    )
+
+    out_path = ROOT / "docs" / "research" / "regime_scoring_comparison.md"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(report)
+    print(f"Wrote {out_path.relative_to(ROOT)}")
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
