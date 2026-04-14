@@ -1,7 +1,7 @@
 # Backtester Specification
 
 Status: **Stabilizing**
-Last updated: 2026-04-13 (transaction costs added — see issue #6)
+Last updated: 2026-04-13 (bond return approximation validated — see issue #8)
 
 ## Purpose
 
@@ -72,6 +72,77 @@ Specifically:
   index.
 - Pre-data periods: covered by proxy splicing (see below). Any remaining gap must
   be explicitly documented.
+
+## Bond return approximation
+
+### Purpose
+Real bond total-return indices are not freely available for the full
+1975-present range. We approximate daily total returns from Treasury
+yields using a first-order duration model.
+
+### Formula
+For each trading day `t`:
+```
+daily_return[t] = -duration × (yield[t] - yield[t-1]) + yield[t-1] / 252
+```
+- `yield` is in decimal form (0.05 = 5%)
+- `duration = 8` for `long_bonds` (10Y proxy, `^TNX`)
+- `duration = 2` for `short_bonds` (2Y proxy, `GS2`)
+- The first term is the price-change from yield movement; the second is
+  the carry accrual
+
+### Assumptions and limitations
+- Duration is constant. In reality, duration shortens with rising yields
+  and with age; we use a midpoint estimate.
+- Convexity is ignored. Small daily yield moves (<50 bps) incur <5%
+  convexity; large moves (1980s tightening, 2022) can reach 10-20%.
+- Coupon reinvestment beyond the `yield/252` accrual is not modeled.
+- Errors compound over 50 years; the validation below sets a tolerance.
+
+### Validation methodology
+Compare synthetic daily bond returns to real total-return ETF data over
+the overlap period:
+- Long bonds: **TLT** (iShares 20+ Year Treasury Bond ETF), 2002-07+
+- Short bonds: **SHY** (iShares 1-3 Year Treasury Bond ETF), 2002-07+
+
+Resample both synthetic and ETF returns to monthly and compute:
+- Mean absolute error (MAE) of monthly returns
+- Correlation
+- Per-decade CAGR divergence (synthetic CAGR minus ETF CAGR)
+
+### Accuracy threshold
+The approximation is considered adequate if:
+- Per-decade CAGR divergence ≤ **0.50 percentage points per year** for
+  every decade in the overlap period
+- Correlation of monthly returns ≥ 0.90
+
+If either bound is violated for a given asset class, the implementation
+must splice real ETF data for the overlap period (same pattern as
+`gold`/`commodities` in "Proxy series splicing"). The approximation
+continues to apply before the ETF start date.
+
+### Invariants
+- Daily bond return is finite on every business day in 1975-01-01 → present
+- With zero yield change, daily return equals `yield[t-1] / 252` exactly
+- Circuit breaker at `|r| < 0.25` (inherited from asset-returns invariants)
+
+### Test cases
+- Unit: zero yield change for a full year yields `(1 + yield/252)^252 − 1`
+  (approximately `yield`) as the compounded annual return
+- Unit: yield moves from 5% to 6% in one day produces long-bond daily
+  return of about `-8 × 0.01 + 0.05/252 = -7.98%` (and similarly for short
+  bonds with duration 2)
+- Integration: MAE of monthly synthetic long_bonds vs TLT over the full
+  overlap period is computed and reported; the implementation record
+  shows whether the 0.50 ppt/yr / 0.90 correlation threshold is met per
+  decade
+- Integration: same validation for short_bonds vs SHY
+
+### Known open questions
+- Whether to switch to ETF data automatically once available, or continue
+  using the approximation for consistency across the full backtest.
+  Default in this spec: keep the approximation unless the threshold is
+  violated, to preserve uniform methodology across the period.
 
 ## Proxy series splicing
 
