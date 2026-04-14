@@ -102,8 +102,11 @@ def synthetic_data(trading_index: pd.DatetimeIndex) -> dict:
 # Monthly -> daily conversion invariant
 # ---------------------------------------------------------------------------
 
+@pytest.mark.unit
+@pytest.mark.spec
 def test_monthly_to_daily_compounding_identity():
-    """Compounded daily returns equal the underlying monthly return."""
+    """docs/specs/backtester.md "Proxy series splicing → Test cases":
+    compounded daily returns equal the underlying monthly return."""
     idx = _business_days("1980-01-01", "1980-12-31")
     levels = pd.Series(
         [100.0, 101.0, 99.5, 102.3, 103.0, 104.1, 106.0, 105.5, 107.0,
@@ -125,6 +128,7 @@ def test_monthly_to_daily_compounding_identity():
         )
 
 
+@pytest.mark.unit
 def test_monthly_to_daily_evenly_distributed():
     """Within a month, every trading day receives the same daily return."""
     idx = _business_days("1980-02-01", "1980-02-29")
@@ -142,7 +146,11 @@ def test_monthly_to_daily_evenly_distributed():
 # Splice invariants: no gap / no overlap
 # ---------------------------------------------------------------------------
 
+@pytest.mark.unit
+@pytest.mark.spec
 def test_splice_has_no_overlap_and_no_gap(synthetic_data):
+    """docs/specs/backtester.md "Proxy series splicing → Test cases":
+    spliced series have no gap or overlap at splice boundaries."""
     returns, sources = build_asset_returns(
         synthetic_data, start="1975-01-01", return_sources=True
     )
@@ -190,8 +198,11 @@ def test_splice_has_no_overlap_and_no_gap(synthetic_data):
     assert sources.loc[wti_prev, "commodities"] != sources.loc[wti_to_fut, "commodities"]
 
 
+@pytest.mark.unit
+@pytest.mark.spec
 def test_commodities_splice_boundary(synthetic_data):
-    """The day before each splice belongs to the older source; the day of, to the newer."""
+    """docs/specs/backtester.md "Proxy series splicing → Test cases":
+    the day before each splice belongs to the older source; the day of, to the newer."""
     _, sources = build_asset_returns(
         synthetic_data, start="1975-01-01", return_sources=True
     )
@@ -205,8 +216,11 @@ def test_commodities_splice_boundary(synthetic_data):
 # Non-zero returns pre-2000
 # ---------------------------------------------------------------------------
 
+@pytest.mark.unit
+@pytest.mark.spec
 def test_nonzero_returns_for_gold_and_commodities_in_1975(synthetic_data):
-    """At 1975-06-15, gold and commodities must have real (non-zero) returns."""
+    """docs/specs/backtester.md "Proxy series splicing → Test cases":
+    at 1975-06-15, gold and commodities must have real (non-zero) returns."""
     returns = build_asset_returns(synthetic_data, start="1975-01-01")
 
     target = pd.Timestamp("1975-06-15")
@@ -222,9 +236,12 @@ def test_nonzero_returns_for_gold_and_commodities_in_1975(synthetic_data):
 # Spliced gold returns reproduce WPUSI019011 monthly returns
 # ---------------------------------------------------------------------------
 
+@pytest.mark.unit
+@pytest.mark.spec
 def test_spliced_gold_monthly_returns_match_proxy(synthetic_data):
-    """For any full month in 1975-2000, compounded daily gold returns equal
-    WPUSI019011 monthly returns."""
+    """docs/specs/backtester.md "Proxy series splicing → Test cases":
+    compounded monthly returns from spliced daily gold series equal
+    WPUSI019011 monthly returns for any full month in 1975-2000."""
     returns = build_asset_returns(synthetic_data, start="1975-01-01")
 
     wpu = synthetic_data[GOLD_PROXY_SERIES]
@@ -256,6 +273,7 @@ def test_spliced_gold_monthly_returns_match_proxy(synthetic_data):
 # splice_returns primitive: newer source wins on overlap
 # ---------------------------------------------------------------------------
 
+@pytest.mark.unit
 def test_splice_returns_newer_wins():
     idx_a = pd.date_range("2000-01-01", periods=5, freq="D")
     idx_b = pd.date_range("2000-01-04", periods=5, freq="D")
