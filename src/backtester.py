@@ -9,6 +9,21 @@ import numpy as np
 from dataclasses import dataclass, field
 from typing import Protocol
 
+# ---------------------------------------------------------------------------
+# Pre-2000 proxy splicing configuration (see docs/specs/backtester.md, issue #1)
+# ---------------------------------------------------------------------------
+
+GOLD_PROXY_SERIES = "WPUSI019011"
+COMMODITIES_MONTHLY_PROXY_SERIES = "PPIACO"
+COMMODITIES_DAILY_PROXY_SERIES = "DCOILWTICO"
+
+# Splice dates are best-guess defaults; the actual splice date is derived
+# dynamically as the first trading day on which the newer source has data
+# (belongs to the newer source — exclusive on older, inclusive on newer).
+GOLD_DEFAULT_SPLICE = pd.Timestamp("2000-08-30")
+COMMODITIES_MONTHLY_TO_DAILY_SPLICE = pd.Timestamp("1986-01-02")
+COMMODITIES_DAILY_TO_FUTURES_SPLICE = pd.Timestamp("2000-08-23")
+
 
 # ---------------------------------------------------------------------------
 # Data structures
@@ -41,10 +56,154 @@ class BacktestResult:
 # Asset price proxies
 # ---------------------------------------------------------------------------
 
+def _as_series(obj) -> pd.Series:
+    """Normalize a Series or single-column DataFrame to a Series."""
+    if isinstance(obj, pd.DataFrame):
+        return obj.squeeze("columns")
+    return obj
+
+
+def monthly_levels_to_daily_returns(
+    monthly_levels: pd.Series,
+    trading_index: pd.DatetimeIndex,
+) -> pd.Series:
+    """
+    Convert a monthly level series to a daily-return series aligned to trading days.
+
+    Distributes each monthly return evenly across the trading days within that
+    month such that the compounded daily returns equal the monthly return.
+
+    Parameters
+    ----------
+    monthly_levels
+        Monthly index series of price/index levels.
+    trading_index
+        Target daily DatetimeIndex (e.g., equities trading days). Output aligns
+        to these dates.
+
+    Returns
+    -------
+    pd.Series indexed by ``trading_index`` with daily returns. Days outside the
+    monthly series' coverage are NaN.
+    """
+    monthly_levels = monthly_levels.dropna().sort_index()
+    if monthly_levels.empty:
+        return pd.Series(np.nan, index=trading_index, dtype=float)
+
+    monthly_returns = monthly_levels.pct_change()
+
+    trading_index = pd.DatetimeIndex(trading_index).sort_values()
+    period_key = trading_index.to_period("M")
+
+    days_per_month_map = pd.Series(period_key).value_counts()
+
+    monthly_returns_by_period = pd.Series(
+        monthly_returns.values, index=monthly_returns.index.to_period("M")
+    )
+    aligned_monthly = monthly_returns_by_period.reindex(period_key).values
+    n_days = days_per_month_map.reindex(period_key).values.astype(float)
+
+    daily_values = (1.0 + aligned_monthly) ** (1.0 / n_days) - 1.0
+    return pd.Series(daily_values, index=trading_index)
+
+
+def splice_returns(
+    segments: list[tuple[pd.Series, str]],
+) -> tuple[pd.Series, pd.Series]:
+    """
+    Splice ordered return segments into one continuous daily return series.
+
+    Each segment is ``(returns, source_label)``. Segments are processed in order;
+    earlier segments cover earlier dates. For each date present in a later
+    segment, that segment wins — the splice date is the first date at which the
+    newer segment has data, belonging exclusively to the newer source.
+
+    Returns
+    -------
+    (returns, sources) — both indexed by the union of segment indices.
+    ``returns`` holds float daily returns, ``sources`` holds the string label of
+    the source that supplied each date.
+    """
+    if not segments:
+        return pd.Series(dtype=float), pd.Series(dtype=object)
+
+    full_index = segments[0][0].index
+    for seg, _ in segments[1:]:
+        full_index = full_index.union(seg.index)
+    full_index = full_index.sort_values()
+
+    returns = pd.Series(np.nan, index=full_index, dtype=float)
+    sources = pd.Series(pd.NA, index=full_index, dtype=object)
+
+    for seg_returns, label in segments:
+        seg_returns = seg_returns.dropna()
+        returns.loc[seg_returns.index] = seg_returns.values
+        sources.loc[seg_returns.index] = label
+
+    return returns, sources
+
+
+def _build_gold_returns(
+    data: dict[str, pd.DataFrame],
+    trading_index: pd.DatetimeIndex,
+) -> tuple[pd.Series, pd.Series]:
+    """Build spliced daily gold returns: WPUSI019011 (pre-2000) -> GC=F."""
+    segments: list[tuple[pd.Series, str]] = []
+
+    proxy = data.get(GOLD_PROXY_SERIES)
+    if proxy is not None:
+        proxy_levels = _as_series(proxy)
+        proxy_daily = monthly_levels_to_daily_returns(proxy_levels, trading_index)
+        segments.append((proxy_daily, GOLD_PROXY_SERIES))
+
+    gold = data.get("GC=F")
+    if gold is not None:
+        primary_ret = gold["Close"].pct_change()
+        segments.append((primary_ret, "GC=F"))
+
+    if not segments:
+        empty = pd.Series(dtype=float, index=trading_index)
+        return empty, pd.Series(pd.NA, index=trading_index, dtype=object)
+
+    return splice_returns(segments)
+
+
+def _build_commodities_returns(
+    data: dict[str, pd.DataFrame],
+    trading_index: pd.DatetimeIndex,
+) -> tuple[pd.Series, pd.Series]:
+    """Build spliced daily commodities returns: PPIACO -> DCOILWTICO -> CL=F."""
+    segments: list[tuple[pd.Series, str]] = []
+
+    ppiaco = data.get(COMMODITIES_MONTHLY_PROXY_SERIES)
+    if ppiaco is not None:
+        ppiaco_levels = _as_series(ppiaco)
+        ppiaco_daily = monthly_levels_to_daily_returns(ppiaco_levels, trading_index)
+        segments.append((ppiaco_daily, COMMODITIES_MONTHLY_PROXY_SERIES))
+
+    wti = data.get(COMMODITIES_DAILY_PROXY_SERIES)
+    if wti is not None:
+        wti_levels = _as_series(wti).dropna()
+        wti_ret = wti_levels.pct_change()
+        segments.append((wti_ret, COMMODITIES_DAILY_PROXY_SERIES))
+
+    oil = data.get("CL=F")
+    if oil is not None:
+        primary_ret = oil["Close"].pct_change()
+        segments.append((primary_ret, "CL=F"))
+
+    if not segments:
+        empty = pd.Series(dtype=float, index=trading_index)
+        return empty, pd.Series(pd.NA, index=trading_index, dtype=object)
+
+    return splice_returns(segments)
+
+
 def build_asset_returns(
     data: dict[str, pd.DataFrame],
     start: str = "1975-01-01",
-) -> pd.DataFrame:
+    return_sources: bool = False,
+) -> pd.DataFrame | tuple[pd.DataFrame, pd.DataFrame]:
     """
     Build daily returns for investable asset classes.
 
@@ -52,59 +211,55 @@ def build_asset_returns(
     - equities: S&P 500 total return (price-only as proxy)
     - long_bonds: 10Y Treasury return approximation from yield changes
     - short_bonds: approximate short bond return from 2Y yield
-    - gold: Gold futures (or London fix before 2000)
-    - commodities: Oil futures (imperfect but available)
+    - gold: GC=F futures, spliced with WPUSI019011 (FRED) for 1975-2000
+    - commodities: CL=F futures, spliced with DCOILWTICO (FRED) for 1986-2000
+      and PPIACO (FRED) for 1975-1986 — see docs/specs/backtester.md
     - cash: Fed funds rate / 252 (daily risk-free)
+
+    Parameters
+    ----------
+    data
+        Mapping from series id to cached DataFrame/Series. Expected keys include
+        ``^GSPC``, ``^TNX``, ``GC=F``, ``CL=F``, ``FEDFUNDS``, and the proxy
+        series ``WPUSI019011``, ``PPIACO``, ``DCOILWTICO``.
+    start
+        Backtest start date (default: 1975-01-01).
+    return_sources
+        If True, also return a DataFrame of string source labels per date/asset
+        so downstream analysis can distinguish proxy from primary periods.
     """
     start_dt = pd.Timestamp(start)
 
-    # Equities: S&P 500 daily returns
     sp500 = data.get("^GSPC")
     if sp500 is not None:
         eq_ret = sp500["Close"].pct_change()
+        trading_index = sp500.index
     else:
         eq_ret = pd.Series(dtype=float)
+        trading_index = pd.DatetimeIndex([])
 
-    # Long bonds: approximate from 10Y yield changes
-    # Bond return ≈ -duration * Δyield + yield/252
-    # Use duration ~ 8 for 10Y Treasury
     tnx = data.get("^TNX")
     if tnx is not None:
-        y = tnx["Close"] / 100  # convert to decimal
+        y = tnx["Close"] / 100
         duration = 8.0
         bond_ret = -duration * y.diff() + y.shift(1) / 252
-        bond_ret = bond_ret.clip(-0.10, 0.10)  # cap extreme moves
+        bond_ret = bond_ret.clip(-0.10, 0.10)
     else:
         bond_ret = pd.Series(dtype=float)
 
-    # Short bonds: approximate from 2Y yield (duration ~2)
     gs2 = data.get("GS2_yield")
     if gs2 is not None:
         y2 = gs2 / 100
         short_bond_ret = -2.0 * y2.diff() + y2.shift(1) / 252
         short_bond_ret = short_bond_ret.clip(-0.05, 0.05)
     else:
-        # Fall back to cash-like return
         short_bond_ret = pd.Series(dtype=float)
 
-    # Gold
-    gold = data.get("GC=F")
-    if gold is not None:
-        gold_ret = gold["Close"].pct_change()
-    else:
-        gold_ret = pd.Series(dtype=float)
+    gold_ret, gold_src = _build_gold_returns(data, trading_index)
+    comm_ret, comm_src = _build_commodities_returns(data, trading_index)
 
-    # Commodities (oil as proxy)
-    oil = data.get("CL=F")
-    if oil is not None:
-        comm_ret = oil["Close"].pct_change()
-    else:
-        comm_ret = pd.Series(dtype=float)
-
-    # Cash: fed funds daily
     ff = data.get("FEDFUNDS")
     if ff is not None:
-        # Monthly rate, convert to daily
         ff_daily = ff.squeeze().resample("D").ffill() / 100 / 252
     else:
         ff_daily = pd.Series(dtype=float)
@@ -118,11 +273,22 @@ def build_asset_returns(
         "cash": ff_daily,
     })
 
-    # Align to common date range starting from start_dt
     returns = returns.loc[start_dt:]
     returns = returns.fillna(0)
 
-    return returns
+    if not return_sources:
+        return returns
+
+    sources = pd.DataFrame({
+        "equities": "^GSPC",
+        "long_bonds": "^TNX",
+        "short_bonds": "GS2_yield",
+        "gold": gold_src,
+        "commodities": comm_src,
+        "cash": "FEDFUNDS",
+    }, index=returns.index)
+
+    return returns, sources
 
 
 # ---------------------------------------------------------------------------
