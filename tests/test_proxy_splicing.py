@@ -12,9 +12,12 @@ import pandas as pd
 import pytest
 
 from src.backtester import (
-    GOLD_PROXY_SERIES,
-    COMMODITIES_MONTHLY_PROXY_SERIES,
     COMMODITIES_DAILY_PROXY_SERIES,
+    COMMODITIES_DAILY_TO_FUTURES_SPLICE,
+    COMMODITIES_MONTHLY_PROXY_SERIES,
+    COMMODITIES_MONTHLY_TO_DAILY_SPLICE,
+    GOLD_DEFAULT_SPLICE,
+    GOLD_PROXY_SERIES,
     build_asset_returns,
     monthly_levels_to_daily_returns,
     splice_returns,
@@ -144,22 +147,47 @@ def test_splice_has_no_overlap_and_no_gap(synthetic_data):
         synthetic_data, start="1975-01-01", return_sources=True
     )
 
+    start = pd.Timestamp("1975-01-01")
+    end = returns.index[-1]
+    full_range = (returns.index >= start) & (returns.index <= end)
+
+    # No-gap: every trading day in the intended coverage range has both a
+    # source label and a (non-zero-filled) return for the proxied assets.
+    # If Fix 1 revealed a gap the splice missed, these assertions fail.
     for asset in ("gold", "commodities"):
-        src = sources[asset].dropna()
-        assert not src.isna().any()
-        assert returns[asset].notna().all()
+        src = sources.loc[full_range, asset]
+        ret = returns.loc[full_range, asset]
+        assert src.notna().all(), (
+            f"{asset}: source label has NaN in 1975-{end.date()} range"
+        )
+        assert ret.notna().all(), (
+            f"{asset}: returns have NaN in 1975-{end.date()} range"
+        )
 
-    gold_before = sources.loc[:"2000-08-29", "gold"].dropna()
-    gold_after = sources.loc["2000-08-30":, "gold"].dropna()
-    assert set(gold_before.unique()).issubset({GOLD_PROXY_SERIES})
-    assert set(gold_after.unique()).issubset({"GC=F"})
+    # No-overlap: at each splice boundary, the day before the splice belongs to
+    # the older source and the day of the splice belongs to the newer source.
+    def _prev_trading_day(idx: pd.DatetimeIndex, boundary: pd.Timestamp) -> pd.Timestamp:
+        prior = idx[idx < boundary]
+        assert len(prior) > 0, f"no trading day before {boundary.date()}"
+        return prior[-1]
 
-    comm_ppi = sources.loc[:"1985-12-31", "commodities"].dropna()
-    comm_wti = sources.loc["1986-01-02":"2000-08-22", "commodities"].dropna()
-    comm_fut = sources.loc["2000-08-23":, "commodities"].dropna()
-    assert set(comm_ppi.unique()).issubset({COMMODITIES_MONTHLY_PROXY_SERIES})
-    assert set(comm_wti.unique()).issubset({COMMODITIES_DAILY_PROXY_SERIES})
-    assert set(comm_fut.unique()).issubset({"CL=F"})
+    gold_splice = GOLD_DEFAULT_SPLICE
+    gold_prev = _prev_trading_day(sources.index, gold_splice)
+    assert sources.loc[gold_prev, "gold"] == GOLD_PROXY_SERIES
+    assert sources.loc[gold_splice, "gold"] == "GC=F"
+    assert sources.loc[gold_prev, "gold"] != sources.loc[gold_splice, "gold"]
+
+    ppi_to_wti = COMMODITIES_MONTHLY_TO_DAILY_SPLICE
+    ppi_prev = _prev_trading_day(sources.index, ppi_to_wti)
+    assert sources.loc[ppi_prev, "commodities"] == COMMODITIES_MONTHLY_PROXY_SERIES
+    assert sources.loc[ppi_to_wti, "commodities"] == COMMODITIES_DAILY_PROXY_SERIES
+    assert sources.loc[ppi_prev, "commodities"] != sources.loc[ppi_to_wti, "commodities"]
+
+    wti_to_fut = COMMODITIES_DAILY_TO_FUTURES_SPLICE
+    wti_prev = _prev_trading_day(sources.index, wti_to_fut)
+    assert sources.loc[wti_prev, "commodities"] == COMMODITIES_DAILY_PROXY_SERIES
+    assert sources.loc[wti_to_fut, "commodities"] == "CL=F"
+    assert sources.loc[wti_prev, "commodities"] != sources.loc[wti_to_fut, "commodities"]
 
 
 def test_commodities_splice_boundary(synthetic_data):

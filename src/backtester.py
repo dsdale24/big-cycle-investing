@@ -274,7 +274,14 @@ def build_asset_returns(
     })
 
     returns = returns.loc[start_dt:]
-    returns = returns.fillna(0)
+
+    # Zero-fill only assets with no proxy coverage (bonds/cash edge cases).
+    # Gold and commodities have spec-mandated proxy coverage from 1975 onward;
+    # any NaN there is a real gap and must surface, not be silently filled.
+    # See docs/specs/backtester.md "Asset returns → Invariants".
+    PROXIED_ASSETS = {"gold", "commodities"}
+    non_proxied_cols = [c for c in returns.columns if c not in PROXIED_ASSETS]
+    returns[non_proxied_cols] = returns[non_proxied_cols].fillna(0)
 
     if not return_sources:
         return returns
