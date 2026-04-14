@@ -146,9 +146,19 @@ class Strategy(Protocol):
         self,
         date: pd.Timestamp,
         available_data: dict[str, pd.DataFrame | pd.Series],
+        pre_rebalance_weights: dict[str, float],
     ) -> PortfolioSnapshot:
         ...
 ```
+
+### Protocol parameters
+- `date`: rebalance timestamp
+- `available_data`: indicators truncated to `data.loc[:date]` (walk-forward
+  constraint); does NOT include raw asset prices or returns
+- `pre_rebalance_weights`: the portfolio's current weights immediately
+  before this call, after all drift from prior returns. Strategies that
+  want to rate-limit turnover or accept drift unchanged need this input.
+  Strategies that compute new weights purely from indicators can ignore it.
 
 ### PortfolioSnapshot
 ```python
@@ -164,6 +174,9 @@ class PortfolioSnapshot:
 - `sum(weights.values())` must equal 1.0 (within floating point tolerance)
 - All weights must be >= 0 (no shorting in v1)
 - All weight keys must be valid asset class names
+- `pre_rebalance_weights` keys are the asset-class set active on the
+  rebalance date; a newly-introduced asset has weight 0.0 in this dict
+  (not absent), so `.get(key, 0.0)` and `[key]` are equivalent reads
 
 ## Backtest execution
 
