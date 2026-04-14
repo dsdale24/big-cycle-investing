@@ -21,14 +21,22 @@ and `worktree_name` directly. This hook handles both shapes.
 Output (stdout): the absolute worktree path, on success.
 Exit: 0 on success, non-zero to abort worktree creation.
 
+Additionally processes the project's `.worktreeinclude` file (if present)
+to copy gitignored files like `.env` into the new worktree. The default
+Claude Code worktree creation does this automatically, but custom
+WorktreeCreate hooks replace the default entirely — so we do it ourselves
+here. See Claude Code docs §`.worktreeinclude`.
+
 Cross-platform: stdlib only, no jq or bash required.
 """
 from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
+from pathlib import Path
 
 
 def main() -> int:
@@ -82,8 +90,55 @@ def main() -> int:
         )
         return result.returncode
 
+    _copy_worktreeinclude_files(Path(project_cwd), Path(worktree_path))
+
     print(worktree_path)
     return 0
+
+
+def _copy_worktreeinclude_files(project_root: Path, worktree_root: Path) -> None:
+    """Copy files listed in .worktreeinclude into the worktree.
+
+    Claude Code's default worktree creation honors .worktreeinclude
+    automatically, but a custom WorktreeCreate hook replaces the default
+    entirely. We replicate the behavior here so .env and similar
+    gitignored config files reach subagents that need them.
+
+    Minimal implementation: each non-comment, non-blank line is treated
+    as a literal relative path. Wildcards and recursive globs are not
+    supported yet — extend if needed. Errors are logged to stderr but
+    do not fail the hook (the worktree itself is already created).
+    """
+    include_file = project_root / ".worktreeinclude"
+    if not include_file.exists():
+        return
+
+    for raw in include_file.read_text().splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        src = project_root / line
+        dst = worktree_root / line
+        if not src.exists():
+            print(
+                f"create_worktree_from_head: .worktreeinclude entry not found: {line}",
+                file=sys.stderr,
+            )
+            continue
+        if not src.is_file():
+            print(
+                f"create_worktree_from_head: .worktreeinclude entry is not a file (skipping): {line}",
+                file=sys.stderr,
+            )
+            continue
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            shutil.copy2(src, dst)
+        except OSError as err:
+            print(
+                f"create_worktree_from_head: failed to copy {line}: {err}",
+                file=sys.stderr,
+            )
 
 
 if __name__ == "__main__":
