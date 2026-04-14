@@ -7,10 +7,17 @@ coordinator is on. That's wrong for this project's maker-checker workflow:
 when the coordinator delegates from a feature branch with in-progress spec
 updates or intermediate commits, the agent must see those updates.
 
-This hook replaces the default with `git worktree add <path> HEAD` so the
-worktree is based at whatever the coordinator currently has checked out.
+This hook replaces the default with `git worktree add -b worktree-<name>
+<path> HEAD` so the worktree is based at whatever the coordinator currently
+has checked out, and the agent's commits land on a named branch.
 
-Input (stdin): JSON with .worktree_path and .cwd (see Claude Code hook docs).
+Input (stdin): JSON payload. Observed keys for subagent worktrees:
+  - cwd (required): absolute path to the project root
+  - name (required): worktree identifier (e.g., "agent-a249b23c")
+  - session_id, hook_event_name, transcript_path: informational
+User-invoked `claude --worktree <name>` may instead provide `worktree_path`
+and `worktree_name` directly. This hook handles both shapes.
+
 Output (stdout): the absolute worktree path, on success.
 Exit: 0 on success, non-zero to abort worktree creation.
 
@@ -31,20 +38,32 @@ def main() -> int:
         print(f"create_worktree_from_head: invalid JSON on stdin: {err}", file=sys.stderr)
         return 1
 
-    worktree_path = payload.get("worktree_path")
     project_cwd = payload.get("cwd")
-    if not worktree_path or not project_cwd:
+    if not project_cwd:
         print(
-            "create_worktree_from_head: payload missing worktree_path or cwd. "
+            "create_worktree_from_head: payload missing cwd. "
             f"Keys received: {sorted(payload.keys())}",
             file=sys.stderr,
         )
         return 1
 
-    # worktree_name may or may not be present depending on how the worktree is
-    # being created. Fall back to deriving it from the path's final component so
-    # the branch always has a name.
-    worktree_name = payload.get("worktree_name") or os.path.basename(worktree_path)
+    # Accept either explicit worktree_name or the subagent-style `name` field.
+    worktree_name = payload.get("worktree_name") or payload.get("name")
+    if not worktree_name:
+        print(
+            "create_worktree_from_head: payload missing worktree_name/name. "
+            f"Keys received: {sorted(payload.keys())}",
+            file=sys.stderr,
+        )
+        return 1
+
+    # Accept explicit worktree_path if provided; otherwise match Claude Code's
+    # default location (<repo>/.claude/worktrees/<name>). Using the default
+    # means agents clean up consistently and .claude/worktrees/ gitignore
+    # covers everything.
+    worktree_path = payload.get("worktree_path") or os.path.join(
+        project_cwd, ".claude", "worktrees", worktree_name
+    )
 
     # Match Claude Code's default branch-naming convention (worktree-<name>).
     # Without -b, the worktree is detached-HEAD and any commits the agent
