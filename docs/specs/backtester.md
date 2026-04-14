@@ -1,7 +1,7 @@
 # Backtester Specification
 
 Status: **Stabilizing**
-Last updated: 2026-04-13 (pre-2000 proxy splicing added — see issue #1)
+Last updated: 2026-04-13 (transaction costs added — see issue #6)
 
 ## Purpose
 
@@ -146,9 +146,19 @@ class Strategy(Protocol):
         self,
         date: pd.Timestamp,
         available_data: dict[str, pd.DataFrame | pd.Series],
+        pre_rebalance_weights: dict[str, float],
     ) -> PortfolioSnapshot:
         ...
 ```
+
+### Protocol parameters
+- `date`: rebalance timestamp
+- `available_data`: indicators truncated to `data.loc[:date]` (walk-forward
+  constraint); does NOT include raw asset prices or returns
+- `pre_rebalance_weights`: the portfolio's current weights immediately
+  before this call, after all drift from prior returns. Strategies that
+  want to rate-limit turnover or accept drift unchanged need this input.
+  Strategies that compute new weights purely from indicators can ignore it.
 
 ### PortfolioSnapshot
 ```python
@@ -164,6 +174,9 @@ class PortfolioSnapshot:
 - `sum(weights.values())` must equal 1.0 (within floating point tolerance)
 - All weights must be >= 0 (no shorting in v1)
 - All weight keys must be valid asset class names
+- `pre_rebalance_weights` keys are the asset-class set active on the
+  rebalance date; a newly-introduced asset has weight 0.0 in this dict
+  (not absent), so `.get(key, 0.0)` and `[key]` are equivalent reads
 
 ## Backtest execution
 
@@ -178,17 +191,23 @@ class PortfolioSnapshot:
 1. Generate rebalance dates from asset return index
 2. Initialize equal-weight portfolio
 3. For each trading day from start date:
-   a. If rebalance date: call `strategy.allocate()` with truncated data, update weights
+   a. If rebalance date: call `strategy.allocate()` with truncated data;
+      compute turnover and transaction cost from old vs new weights (see
+      "Transaction costs" section); deduct cost from portfolio value;
+      update weights.
    b. Compute portfolio return: `Σ(weight_i × return_i)` for each asset
    c. Drift weights: each weight grows/shrinks proportional to its asset's return
    d. Record daily portfolio return
 
 ### Outputs
 - `BacktestResult` containing:
-  - Daily portfolio returns and cumulative value
+  - Daily portfolio returns and cumulative value (net of transaction costs)
   - Weights at each rebalance date
   - Regime labels at each rebalance
   - Asset returns for the period
+  - `turnover: pd.Series` — turnover (in [0, 1]) at each rebalance date
+  - `costs: pd.Series` — transaction cost paid at each rebalance, in
+    return units (cost / portfolio_value_at_rebalance)
   - Config used
 
 ### Invariants
@@ -196,24 +215,152 @@ class PortfolioSnapshot:
 - Portfolio value on day 0 is 1.0
 - Number of rebalances = number of rebalance dates within the period
 - Weights after drift must still sum to 1.0
+- Turnover at each rebalance is in [0, 1]
+- Cost at each rebalance is ≥ 0
+- Cost is 0 when turnover is 0
+
+## Transaction costs
+
+### Purpose
+Costless rebalancing flatters high-turnover strategies and makes
+comparisons unreliable. This section defines how trading costs are
+modeled so strategies that trade often are penalized fairly.
+
+Costs are applied at rebalance time, deducted from portfolio value, and
+naturally reduce downstream compounding. `BacktestResult` carries the
+per-rebalance turnover and cost so downstream analysis can separate
+signal from cost drag.
+
+### Cost model
+At each rebalance date:
+
+```
+turnover       = 0.5 × Σ |new_weight_i − pre_rebalance_weight_i|
+cost_rate      = cost_rate(date)          # float or callable
+cost           = turnover × cost_rate     # as a fraction of portfolio value
+portfolio_value ← portfolio_value × (1 − cost)
+```
+
+Turnover is half the sum of absolute weight changes, so it sits in
+`[0, 1]`: 0 means no change, 1 means a complete portfolio swap.
+
+### Interface
+
+`run_backtest` accepts:
+```python
+cost_rate: float | Callable[[pd.Timestamp], float] = default_cost_schedule
+```
+- `float`: applied uniformly at every rebalance (e.g., `0.001` = 10 bps
+  on turnover).
+- `Callable`: queried at each rebalance date, returns the rate for that
+  date. This is the default; see schedule below.
+- `0.0`: disables cost application (legacy / unit-test use; must be set
+  explicitly).
+
+### Default cost schedule
+
+| Period | cost_rate (per unit turnover) |
+|---|---|
+| 1975-01-01 → 1980-01-01 | 0.0050 (50 bps) |
+| 1980-01-01 → 2000-01-01 | 0.0030 (30 bps) |
+| 2000-01-01 → 2010-01-01 | 0.0010 (10 bps) |
+| 2010-01-01 → present | 0.0005 (5 bps) |
+
+**Rationale.** Pre-1980 bid-ask spreads and fixed commissions were
+large; deregulation in 1975 and Schwab-era discount brokerage through
+the 1980s gradually compressed them. Electronic execution and decimal
+pricing (2001) dropped explicit costs another order of magnitude by
+2010. Modern index ETF execution is a fraction of a basis point, but
+the 5 bps floor covers bid-ask spread and market impact for realistic
+portfolio sizes.
+
+Rates are estimates, not precise historical data. They're set to
+penalize high-turnover strategies plausibly while remaining calibrated
+enough to compare strategies across decades.
+
+### Invariants
+- `turnover(date) ∈ [0, 1]` at every rebalance
+- `cost_rate(date) ≥ 0` for every date
+- `cost(date) = turnover(date) × cost_rate(date) ≥ 0`
+- A rebalance with `turnover = 0` has `cost = 0` and no impact on
+  portfolio value
+- Portfolio value after cost deduction remains positive (bankruptcy
+  from cost alone is impossible because cost ≤ portfolio value iff
+  `cost_rate ≤ 1`; the default schedule caps at 50 bps, well below 1)
+- `BacktestResult.turnover` and `BacktestResult.costs` are `pd.Series`
+  indexed by rebalance date, same length as `weights`
+
+### Turnover semantics: intended vs. actual
+
+Turnover measures **actual** weight change at each rebalance: the gap
+between the `new_weights` the strategy produces and the `pre_rebalance_weights`
+observed right before the call to `strategy.allocate(...)`. Drift between
+rebalances — asset returns moving the portfolio away from the previous
+target — is NOT free. Re-targeting the original weights under drift is a
+real trade and produces real turnover.
+
+Consequence: a strategy that always returns the same target (e.g.,
+constant 60/40) incurs turnover proportional to drift, not zero turnover.
+
+A strategy that produces truly zero turnover must either (a) accept drift
+as the new target, i.e., return `pre_rebalance_weights` unchanged, or
+(b) operate under flat returns so drift does not occur.
+
+### Test cases
+- A strategy whose output at each rebalance equals the current
+  `pre_rebalance_weights` (drift-accepting strategy) has `turnover = 0` at
+  every rebalance and total `costs.sum() == 0`, regardless of the return
+  process
+- A constant-target static strategy under **flat** returns (no drift) has
+  `turnover = 0` at every rebalance — this is the degenerate case that
+  stresses the formula, not the realistic behavior
+- A constant-target static strategy under **non-flat** returns has
+  strictly positive turnover at most rebalances (drift forces re-targeting)
+- A strategy that swaps a 60/40 portfolio to 40/60 has `turnover = 0.2`
+  (half the total absolute weight change)
+- A strategy that fully swaps to a disjoint allocation has
+  `turnover = 1.0` and a single-rebalance cost equal to `cost_rate(date)`
+- `cost_rate = 0.0` produces a `BacktestResult` whose `costs` series is
+  all zeros and whose `portfolio_value` series equals
+  `(1 + portfolio_returns).cumprod()` to floating-point tolerance — this
+  is the explicit equivalence with the pre-cost compounding formula
+- The default schedule returns `0.003` for 1985-06-15, `0.001` for
+  2005-06-15, and `0.0005` for 2020-06-15
+- For strategies with non-zero turnover, the post-cost CAGR is strictly
+  less than the hypothetical zero-cost CAGR (sanity check that costs
+  are actually being applied)
+
+### Known limitations
+- No bid-ask spread asymmetry (buys and sells cost the same)
+- No market impact scaling with position size
+- No slippage from rebalance-day volatility
+- No tax drag (out of scope for v1; stretch goal in issue #6)
+- No differentiation by asset class (gold, bonds, and equities all pay
+  the same rate)
+
+These are acceptable simplifications for a long-horizon wealth-preservation
+strategy backtest. Refinements can be added without changing the
+`cost_rate` interface.
 
 ## Performance metrics
 
 ### Required metrics
 | Metric | Formula | Notes |
 |--------|---------|-------|
-| Total return | `final_value / initial_value - 1` | |
-| CAGR | `(1 + total_return) ^ (1/years) - 1` | |
+| Total return | `final_value / initial_value - 1` | Net of costs |
+| CAGR | `(1 + total_return) ^ (1/years) - 1` | Net of costs |
 | Volatility | `daily_returns.std() × √252` | Annualized |
 | Sharpe ratio | `CAGR / volatility` | Assuming 0 risk-free (simplification) |
 | Max drawdown | `min((value - cummax) / cummax)` | |
 | Calmar ratio | `CAGR / |max_drawdown|` | |
+| Average turnover | `result.turnover.mean()` | Per rebalance, in [0, 1] |
+| Total cost drag | `result.costs.sum()` | Sum of per-rebalance cost fractions |
+| Cost-adjusted CAGR spread | `CAGR(cost_rate=0) - CAGR(default)` | Optional; requires re-running |
 
 ### Future metrics (not yet implemented)
 - Sortino ratio (downside deviation only)
-- Turnover per rebalance
-- Transaction cost drag
 - Per-decade breakdown
+- Tax-adjusted return (short-term vs long-term gains)
 
 ---
 

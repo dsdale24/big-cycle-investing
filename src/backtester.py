@@ -7,7 +7,7 @@ that would have been available on that date. No look-ahead bias.
 import pandas as pd
 import numpy as np
 from dataclasses import dataclass, field
-from typing import Protocol
+from typing import Callable, Protocol
 
 # ---------------------------------------------------------------------------
 # Pre-2000 proxy splicing configuration (see docs/specs/backtester.md, issue #1)
@@ -23,6 +23,33 @@ COMMODITIES_DAILY_PROXY_SERIES = "DCOILWTICO"
 GOLD_DEFAULT_SPLICE = pd.Timestamp("2000-08-30")
 COMMODITIES_MONTHLY_TO_DAILY_SPLICE = pd.Timestamp("1986-01-02")
 COMMODITIES_DAILY_TO_FUTURES_SPLICE = pd.Timestamp("2000-08-23")
+
+
+# ---------------------------------------------------------------------------
+# Transaction cost schedule (see docs/specs/backtester.md, issue #6)
+# ---------------------------------------------------------------------------
+
+# Sorted (ascending) by start date — ``default_cost_schedule`` relies on this.
+DEFAULT_COST_SCHEDULE_DATES: list[tuple[pd.Timestamp, float]] = [
+    (pd.Timestamp("1975-01-01"), 0.0050),
+    (pd.Timestamp("1980-01-01"), 0.0030),
+    (pd.Timestamp("2000-01-01"), 0.0010),
+    (pd.Timestamp("2010-01-01"), 0.0005),
+]
+
+
+def default_cost_schedule(date: pd.Timestamp) -> float:
+    """Return the historical per-turnover cost rate for ``date``.
+
+    See docs/specs/backtester.md "Transaction costs → Default cost schedule".
+    """
+    rate = 0.0050  # pre-1975 safety fallback
+    for start, r in DEFAULT_COST_SCHEDULE_DATES:
+        if date >= start:
+            rate = r
+        else:
+            break
+    return rate
 
 
 # ---------------------------------------------------------------------------
@@ -50,6 +77,8 @@ class BacktestResult:
     weights_history: pd.DataFrame  # weights at each rebalance date
     regime_history: pd.Series  # regime label at each rebalance
     config: dict  # strategy config used
+    turnover: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))
+    costs: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))
 
 
 # ---------------------------------------------------------------------------
@@ -317,10 +346,13 @@ class Strategy(Protocol):
         self,
         date: pd.Timestamp,
         available_data: dict[str, pd.DataFrame | pd.Series],
+        pre_rebalance_weights: dict[str, float],
     ) -> PortfolioSnapshot:
         """
-        Given a date and all data available up to that date,
-        return target portfolio weights.
+        Given a date, all data available up to that date, and the portfolio's
+        current (drifted) weights, return target portfolio weights.
+
+        See docs/specs/backtester.md "Strategy interface".
         """
         ...
 
@@ -337,7 +369,7 @@ class StaticStrategy:
         self.weights = {k: v / total for k, v in weights.items()}
         self.name = name
 
-    def allocate(self, date, available_data):
+    def allocate(self, date, available_data, pre_rebalance_weights):
         return PortfolioSnapshot(date=date, weights=self.weights, regime=self.name)
 
 
@@ -347,7 +379,7 @@ class AllWeatherStrategy:
     30% equities, 40% long bonds, 15% short bonds, 7.5% gold, 7.5% commodities
     """
 
-    def allocate(self, date, available_data):
+    def allocate(self, date, available_data, pre_rebalance_weights):
         return PortfolioSnapshot(
             date=date,
             weights={
@@ -442,7 +474,7 @@ class BigCycleStrategy:
 
         return regime, signals
 
-    def allocate(self, date, available_data):
+    def allocate(self, date, available_data, pre_rebalance_weights):
         regime, signals = self._classify_regime(date, available_data)
 
         # Start from base allocation
@@ -486,14 +518,25 @@ def run_backtest(
     start: str = "1975-01-01",
     rebalance_freq: str = "QE",  # quarterly rebalancing
     config: dict | None = None,
+    cost_rate: float | Callable[[pd.Timestamp], float] = default_cost_schedule,
 ) -> BacktestResult:
     """
     Run a walk-forward backtest.
 
     At each rebalance date, the strategy is called with only data available
     up to that date. Between rebalances, portfolio drifts with market returns.
+
+    Transaction costs are deducted from portfolio value at each rebalance as
+    ``turnover × cost_rate(date)``. See docs/specs/backtester.md "Transaction
+    costs" for the full model.
     """
     start_dt = pd.Timestamp(start)
+
+    if callable(cost_rate):
+        rate_fn: Callable[[pd.Timestamp], float] = cost_rate
+    else:
+        fixed_rate = float(cost_rate)
+        rate_fn = lambda _date: fixed_rate  # noqa: E731
 
     # Generate rebalance dates
     all_dates = asset_returns.index
@@ -503,6 +546,8 @@ def run_backtest(
     snapshots = []
     weights_rows = []
     regime_entries = []
+    turnover_entries: list[dict] = []
+    cost_entries: list[dict] = []
 
     # Current weights (start equal-weight)
     n_assets = len(ASSET_CLASSES)
@@ -511,7 +556,22 @@ def run_backtest(
     # Daily portfolio returns
     port_returns = pd.Series(0.0, index=all_dates[all_dates >= start_dt], dtype=float)
 
+    # Portfolio value compounds day-to-day and drops by ``cost_t`` at each
+    # rebalance. We track it explicitly so transaction costs flow through the
+    # cumulative value without corrupting the daily-return series (costs are
+    # portfolio-level one-time deductions, not asset returns).
+    portfolio_value = 1.0
+    portfolio_value_series = pd.Series(
+        0.0, index=all_dates[all_dates >= start_dt], dtype=float
+    )
+
     rebal_set = set(rebalance_dates)
+
+    # Canonical asset-class set for pre_rebalance_weights: union of current
+    # weights and the asset-return columns the backtest was built with. Ensures
+    # a newly-introduced asset is exposed with weight 0.0 rather than absent.
+    # See docs/specs/backtester.md "Strategy interface → Invariants".
+    asset_class_keys = set(current_weights) | set(asset_returns.columns)
 
     for date in all_dates[all_dates >= start_dt]:
         # Rebalance?
@@ -524,11 +584,30 @@ def run_backtest(
                 elif isinstance(df, pd.Series):
                     avail[key] = df.loc[:date]
 
-            snapshot = strategy.allocate(date, avail)
-            current_weights = snapshot.weights
+            # Pass a copy so the strategy can't mutate runtime state.
+            pre_rebalance_weights = {
+                k: current_weights.get(k, 0.0) for k in asset_class_keys
+            }
+
+            snapshot = strategy.allocate(date, avail, pre_rebalance_weights)
+            new_weights = snapshot.weights
+
+            # Turnover uses the union of old and new asset keys so an asset
+            # introduced or dropped by the rebalance is scored fully.
+            all_keys = set(new_weights) | set(current_weights)
+            turnover_t = 0.5 * sum(
+                abs(new_weights.get(k, 0.0) - current_weights.get(k, 0.0))
+                for k in all_keys
+            )
+            cost_t = turnover_t * rate_fn(date)
+            portfolio_value = portfolio_value * (1.0 - cost_t)
+
+            current_weights = new_weights
             snapshots.append(snapshot)
             weights_rows.append({"date": date, **snapshot.weights})
             regime_entries.append({"date": date, "regime": snapshot.regime})
+            turnover_entries.append({"date": date, "turnover": turnover_t})
+            cost_entries.append({"date": date, "cost": cost_t})
 
         # Compute portfolio return for this day
         day_ret = 0.0
@@ -536,6 +615,8 @@ def run_backtest(
             if asset in asset_returns.columns:
                 day_ret += weight * asset_returns.loc[date, asset]
         port_returns.loc[date] = day_ret
+        portfolio_value = portfolio_value * (1.0 + day_ret)
+        portfolio_value_series.loc[date] = portfolio_value
 
         # Drift weights with returns
         new_weights = {}
@@ -550,9 +631,6 @@ def run_backtest(
         if total > 0:
             current_weights = {k: v / total for k, v in new_weights.items()}
 
-    # Build results
-    portfolio_value = (1 + port_returns).cumprod()
-
     weights_df = pd.DataFrame(weights_rows)
     if len(weights_df) > 0:
         weights_df = weights_df.set_index("date")
@@ -563,14 +641,23 @@ def run_backtest(
     else:
         regime_series = pd.Series(dtype=str)
 
+    if turnover_entries:
+        turnover_series = pd.DataFrame(turnover_entries).set_index("date")["turnover"]
+        cost_series = pd.DataFrame(cost_entries).set_index("date")["cost"]
+    else:
+        turnover_series = pd.Series(dtype=float)
+        cost_series = pd.Series(dtype=float)
+
     return BacktestResult(
         snapshots=snapshots,
         portfolio_returns=port_returns,
-        portfolio_value=portfolio_value,
+        portfolio_value=portfolio_value_series,
         asset_returns=asset_returns.loc[start_dt:],
         weights_history=weights_df,
         regime_history=regime_series,
         config=config or {},
+        turnover=turnover_series,
+        costs=cost_series,
     )
 
 
@@ -610,6 +697,9 @@ def compute_metrics(result: BacktestResult) -> dict:
     # Calmar ratio
     calmar = cagr / abs(max_dd) if max_dd != 0 else 0
 
+    avg_turnover = float(result.turnover.mean()) if len(result.turnover) > 0 else 0.0
+    total_cost_drag = float(result.costs.sum()) if len(result.costs) > 0 else 0.0
+
     return {
         "total_return": total_return,
         "cagr": cagr,
@@ -622,6 +712,8 @@ def compute_metrics(result: BacktestResult) -> dict:
         "years": years,
         "start": ret.index[0],
         "end": ret.index[-1],
+        "average_turnover": avg_turnover,
+        "total_cost_drag": total_cost_drag,
     }
 
 
