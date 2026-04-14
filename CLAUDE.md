@@ -141,6 +141,20 @@ subagents and reviewed before merging.
 isolated copy of the repo. This prevents conflicts with files the coordinator or user
 has open, and produces a clean diff to review before merging.
 
+Claude Code's default is to branch worktrees from `origin/HEAD` (i.e., main),
+regardless of which branch the coordinator is on. That's wrong for our flow —
+when the coordinator delegates from a feature branch with in-progress spec
+updates, the agent must see those updates. This project installs a
+`WorktreeCreate` hook at `.claude/hooks/create_worktree_from_head.py` that
+overrides the default and branches from the coordinator's current HEAD. Wired
+up in `.claude/settings.json` (committed). Result: delegation from any branch
+produces a worktree based at that branch's tip.
+
+`.env` is auto-copied into each subagent worktree via `.worktreeinclude`
+(committed). Agents must NOT copy `.env` manually or otherwise modify config to
+escape the worktree boundary — the copy is the sanctioned mechanism and needs
+no action from the agent.
+
 **Worktree testing boundary:** Worktrees have a clean checkout but no populated
 `data/` directory (parquet cache is gitignored and lives in the main repo). This means:
 - **Tests using synthetic/fixture data** run fine in a worktree — prefer these for
@@ -148,14 +162,14 @@ has open, and produces a clean diff to review before merging.
 - **Tests that read real cached data** (e.g., loading fetched FRED/Yahoo parquet
   files) will not find the cache and should either skip gracefully or be run by
   the coordinator in the main repo after the agent reports.
-- **`scripts/fetch_data.py`** cannot be run from a worktree without the `.env`
-  file and network. If an agent needs coverage numbers or verification that
-  requires the full fetch, it must **report this back to the coordinator**
-  rather than work around it.
+- **`scripts/fetch_data.py`** can be run from a worktree (since `.env` is
+  auto-copied via `.worktreeinclude`), but will fetch into the worktree's own
+  `data/` directory — not the main cache. Agents needing cache verification
+  should still report back rather than re-fetching.
 
-Agents must NOT modify config, copy environment variables into the worktree, or
-change paths to escape the worktree boundary. If tests or scripts can't run from
-the worktree, that's a scope signal — report it, don't patch around it.
+Agents must NOT modify config or change paths to escape the worktree boundary.
+If tests or scripts can't run from the worktree, that's a scope signal — report
+it, don't patch around it.
 
 **Background by default:** Coding agents should run with `run_in_background: true`
 when the task is well-specified. The spec is the contract — if the spec is complete,

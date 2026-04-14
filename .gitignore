@@ -10,3 +10,5 @@ data/cache/
 *.parquet
 .ipynb_checkpoints/
 .DS_Store
+.claude/worktrees/
+.claude/settings.local.json
