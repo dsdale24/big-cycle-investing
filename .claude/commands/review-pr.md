@@ -9,7 +9,7 @@ Steps:
 1. Identify the relevant specs by running `gh pr view $ARGUMENTS` and checking:
    - Which files the PR touches (diff)
    - Whether the PR body mentions specific specs
-   - For each modified file in `src/`, `tests/`, or `scripts/`, which spec under `specs/` (fall back to `docs/specs/` if not yet migrated) governs it (see the "Current spec status" table in CLAUDE.md)
+   - For each modified file in `src/`, `tests/`, or `scripts/`, which spec under `specs/` governs it (see the "Current spec status" table in CLAUDE.md)
 
 2. Spawn the `review-pr` subagent in the **foreground** (you need the verdict before deciding whether to merge):
 
