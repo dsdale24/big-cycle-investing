@@ -30,6 +30,12 @@ python scripts/fetch_data.py
 
 # Run notebooks
 cd notebooks && jupyter notebook
+
+# Tests (see docs/specs/testing_and_ci.md for full definitions)
+pytest                          # Everything (unit + integration + spec)
+pytest -m "not integration"     # Unit + spec-without-integration — CI, worktrees, quick feedback
+pytest -m integration           # Only tests that need the parquet cache — local, after fetching data
+pytest -m spec                  # Only spec-anchored tests — audit "what enforces this spec?"
 ```
 
 ## Architecture
@@ -170,6 +176,8 @@ no action from the agent.
 Agents must NOT modify config or change paths to escape the worktree boundary.
 If tests or scripts can't run from the worktree, that's a scope signal — report
 it, don't patch around it.
+
+For full test category definitions and CI design, see docs/specs/testing_and_ci.md.
 
 **Background by default:** Coding agents should run with `run_in_background: true`
 when the task is well-specified. The spec is the contract — if the spec is complete,

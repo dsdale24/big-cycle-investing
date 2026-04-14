@@ -17,3 +17,14 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["ruff", "pytest"]
+
+[tool.pytest.ini_options]
+markers = [
+  "unit: synthetic fixtures only; runs in worktrees and CI",
+  "integration: uses real data/raw/ parquet cache; local only, skips if absent",
+  "spec: directly verifies an invariant listed in docs/specs/*.md",
+]
+testpaths = ["tests"]
+# Fail the run if any test uses an unregistered marker.
+# Combined with the collection check above, forces marker discipline.
+addopts = ["--strict-markers"]
