@@ -9,6 +9,8 @@
       "Write",
       "Bash(git:*)",
       "Bash(pytest:*)",
+      "Bash(.venv/bin/pytest:*)",
+      "Bash(source .venv/bin/activate && pytest:*)",
       "Bash(python -m pytest:*)",
       "Bash(python scripts/*:*)",
       "Bash(python3 scripts/*:*)",

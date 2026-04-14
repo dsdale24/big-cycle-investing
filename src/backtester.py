@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from typing import Callable, Protocol
 
 # ---------------------------------------------------------------------------
-# Pre-2000 proxy splicing configuration (see docs/specs/backtester.md, issue #1)
+# Pre-2000 proxy splicing configuration (see specs/backtester.md, issue #1)
 # ---------------------------------------------------------------------------
 
 GOLD_PROXY_SERIES = "WPUSI019011"
@@ -24,7 +24,7 @@ GOLD_DEFAULT_SPLICE = pd.Timestamp("2000-08-30")
 COMMODITIES_MONTHLY_TO_DAILY_SPLICE = pd.Timestamp("1986-01-02")
 COMMODITIES_DAILY_TO_FUTURES_SPLICE = pd.Timestamp("2000-08-23")
 
-# Bond ETF splicing (see docs/specs/backtester.md "ETF splicing", issue #31).
+# Bond ETF splicing (see specs/backtester.md "ETF splicing", issue #31).
 # The splice date is NOT hardcoded — it is derived dynamically as the first
 # trading day of the ETF's history. TLT/SHY both began trading 2002-07-30.
 LONG_BONDS_ETF = "TLT"
@@ -32,7 +32,7 @@ SHORT_BONDS_ETF = "SHY"
 
 
 # ---------------------------------------------------------------------------
-# Transaction cost schedule (see docs/specs/backtester.md, issue #6)
+# Transaction cost schedule (see specs/backtester.md, issue #6)
 # ---------------------------------------------------------------------------
 
 # Sorted (ascending) by start date — ``default_cost_schedule`` relies on this.
@@ -47,7 +47,7 @@ DEFAULT_COST_SCHEDULE_DATES: list[tuple[pd.Timestamp, float]] = [
 def default_cost_schedule(date: pd.Timestamp) -> float:
     """Return the historical per-turnover cost rate for ``date``.
 
-    See docs/specs/backtester.md "Transaction costs → Default cost schedule".
+    See specs/backtester.md "Transaction costs → Default cost schedule".
     """
     rate = 0.0050  # pre-1975 safety fallback
     for start, r in DEFAULT_COST_SCHEDULE_DATES:
@@ -243,7 +243,7 @@ def _long_bonds_approximation(data: dict[str, pd.DataFrame]) -> pd.Series:
 
     Preserved bitwise-identical to the pre-splicing logic: duration=8,
     carry=yield[t-1]/252, clipped to +/-10% per day. See
-    docs/specs/backtester.md "Bond return approximation → Formula".
+    specs/backtester.md "Bond return approximation → Formula".
     """
     tnx = data.get("^TNX")
     if tnx is None:
@@ -259,7 +259,7 @@ def _short_bonds_approximation(data: dict[str, pd.DataFrame]) -> pd.Series:
 
     Preserved bitwise-identical to the pre-splicing logic: duration=2,
     carry=yield[t-1]/252, clipped to +/-5% per day. See
-    docs/specs/backtester.md "Bond return approximation → Formula".
+    specs/backtester.md "Bond return approximation → Formula".
     """
     gs2 = data.get("GS2_yield")
     if gs2 is None:
@@ -274,7 +274,7 @@ def _etf_total_returns(df: pd.DataFrame) -> pd.Series:
 
     ``Adj Close`` incorporates dividend reinvestment, which is essential for
     bond ETFs whose coupons are distributed monthly. See
-    docs/specs/backtester.md "ETF splicing → Total-return sourcing".
+    specs/backtester.md "ETF splicing → Total-return sourcing".
     """
     if "Adj Close" in df.columns:
         prices = df["Adj Close"]
@@ -289,7 +289,7 @@ def _build_long_bonds_returns(
 ) -> tuple[pd.Series, pd.Series]:
     """Build spliced long_bonds returns: ^TNX approximation -> TLT.
 
-    See docs/specs/backtester.md "ETF splicing (mandatory for validated assets)".
+    See specs/backtester.md "ETF splicing (mandatory for validated assets)".
     """
     segments: list[tuple[pd.Series, str]] = []
 
@@ -314,7 +314,7 @@ def _build_short_bonds_returns(
 ) -> tuple[pd.Series, pd.Series]:
     """Build spliced short_bonds returns: GS2 approximation -> SHY.
 
-    See docs/specs/backtester.md "ETF splicing (mandatory for validated assets)".
+    See specs/backtester.md "ETF splicing (mandatory for validated assets)".
     """
     segments: list[tuple[pd.Series, str]] = []
 
@@ -347,7 +347,7 @@ def build_asset_returns(
     - short_bonds: approximate short bond return from 2Y yield
     - gold: GC=F futures, spliced with WPUSI019011 (FRED) for 1975-2000
     - commodities: CL=F futures, spliced with DCOILWTICO (FRED) for 1986-2000
-      and PPIACO (FRED) for 1975-1986 — see docs/specs/backtester.md
+      and PPIACO (FRED) for 1975-1986 — see specs/backtester.md
     - cash: Fed funds rate / 252 (daily risk-free)
 
     Parameters
@@ -402,7 +402,7 @@ def build_asset_returns(
     # Zero-fill only assets with no proxy coverage (bonds/cash edge cases).
     # Gold and commodities have spec-mandated proxy coverage from 1975 onward;
     # any NaN there is a real gap and must surface, not be silently filled.
-    # See docs/specs/backtester.md "Asset returns → Invariants".
+    # See specs/backtester.md "Asset returns → Invariants".
     PROXIED_ASSETS = {"gold", "commodities"}
     non_proxied_cols = [c for c in returns.columns if c not in PROXIED_ASSETS]
     returns[non_proxied_cols] = returns[non_proxied_cols].fillna(0)
@@ -439,7 +439,7 @@ class Strategy(Protocol):
         Given a date, all data available up to that date, and the portfolio's
         current (drifted) weights, return target portfolio weights.
 
-        See docs/specs/backtester.md "Strategy interface".
+        See specs/backtester.md "Strategy interface".
         """
         ...
 
@@ -614,7 +614,7 @@ def run_backtest(
     up to that date. Between rebalances, portfolio drifts with market returns.
 
     Transaction costs are deducted from portfolio value at each rebalance as
-    ``turnover × cost_rate(date)``. See docs/specs/backtester.md "Transaction
+    ``turnover × cost_rate(date)``. See specs/backtester.md "Transaction
     costs" for the full model.
     """
     start_dt = pd.Timestamp(start)
@@ -657,7 +657,7 @@ def run_backtest(
     # Canonical asset-class set for pre_rebalance_weights: union of current
     # weights and the asset-return columns the backtest was built with. Ensures
     # a newly-introduced asset is exposed with weight 0.0 rather than absent.
-    # See docs/specs/backtester.md "Strategy interface → Invariants".
+    # See specs/backtester.md "Strategy interface → Invariants".
     asset_class_keys = set(current_weights) | set(asset_returns.columns)
 
     for date in all_dates[all_dates >= start_dt]:

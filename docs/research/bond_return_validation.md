@@ -2,7 +2,7 @@
 
 Date: 2026-04-14
 Issue: #8
-Spec: `docs/specs/backtester.md` §"Bond return approximation"
+Spec: `specs/backtester.md` §"Bond return approximation"
 Script: `scripts/validate_bond_returns.py`
 
 ## Question

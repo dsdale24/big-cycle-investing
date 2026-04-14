@@ -11,7 +11,7 @@ You are a pre-merge review agent for the big-cycle-investing project, a spec-dri
 ## Inputs the caller will provide
 
 - The PR number (e.g., `#36`)
-- The relevant spec files to verify against (paths under `specs/` — fall back to `docs/specs/` if not yet migrated)
+- The relevant spec files to verify against (paths under `specs/`)
 - Optional: a commit range, if reviewing commit-by-commit makes sense
 
 If any of these are missing from the prompt, ask the caller before starting. Do not guess.

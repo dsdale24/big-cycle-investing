@@ -1,7 +1,7 @@
 """Tests for the transaction-cost model in ``run_backtest``.
 
 All tests use synthetic fixtures (no FRED cache, no network). Covers the test
-cases listed in ``docs/specs/backtester.md`` under "Transaction costs → Test
+cases listed in ``specs/backtester.md`` under "Transaction costs → Test
 cases".
 """
 
@@ -90,7 +90,7 @@ def test_drift_accepting_strategy_has_zero_turnover_under_nonflat_returns():
     pre_rebalance_weights (drift-accepting strategy) has turnover = 0 at every
     rebalance and total costs.sum() == 0, regardless of the return process".
 
-    See docs/specs/backtester.md "Transaction costs → Test cases".
+    See specs/backtester.md "Transaction costs → Test cases".
     """
     # Non-flat returns: drift actively moves weights between rebalances. A
     # drift-accepting strategy re-adopts those drifted weights as its new
@@ -114,7 +114,7 @@ def test_constant_target_static_strategy_has_zero_turnover_under_flat_returns():
     has turnover = 0 at every rebalance — this is the degenerate case that
     stresses the formula, not the realistic behavior".
 
-    See docs/specs/backtester.md "Transaction costs → Test cases".
+    See specs/backtester.md "Transaction costs → Test cases".
     """
     # Flat returns matter: without drift, the portfolio stays on target
     # between rebalances, so a constant-target strategy produces zero
@@ -145,7 +145,7 @@ def test_constant_target_static_strategy_has_positive_turnover_under_drift():
     strictly positive turnover at most rebalances (drift forces
     re-targeting)".
 
-    See docs/specs/backtester.md "Transaction costs → Test cases".
+    See specs/backtester.md "Transaction costs → Test cases".
     """
     returns = _asset_returns()
     strategy = FixedWeightsStrategy(
@@ -167,7 +167,7 @@ def test_constant_target_static_strategy_has_positive_turnover_under_drift():
 def test_sixty_forty_to_forty_sixty_turnover_is_point_two():
     """Spec: "A strategy that swaps a 60/40 portfolio to 40/60 has turnover = 0.2".
 
-    See docs/specs/backtester.md "Transaction costs → Test cases".
+    See specs/backtester.md "Transaction costs → Test cases".
     """
     returns = _asset_returns()
     sixty_forty = {"equities": 0.6, "long_bonds": 0.4,
@@ -192,7 +192,7 @@ def test_full_swap_turnover_is_one_and_cost_equals_rate():
     """Spec: "A strategy that fully swaps to a disjoint allocation has
     turnover = 1.0 and a single-rebalance cost equal to cost_rate(date)".
 
-    See docs/specs/backtester.md "Transaction costs → Test cases".
+    See specs/backtester.md "Transaction costs → Test cases".
     """
     returns = _asset_returns()
     all_equities = {"equities": 1.0, "long_bonds": 0.0,
@@ -214,7 +214,7 @@ def test_full_swap_turnover_is_one_and_cost_equals_rate():
 @pytest.mark.unit
 @pytest.mark.spec
 def test_zero_cost_rate_matches_precost_trajectory():
-    """Spec (docs/specs/backtester.md "Transaction costs → Test cases"):
+    """Spec (specs/backtester.md "Transaction costs → Test cases"):
 
         cost_rate = 0.0 produces a BacktestResult whose costs series is all
         zeros and whose portfolio_value series equals
@@ -248,7 +248,7 @@ def test_default_cost_schedule_values():
     """Spec: "The default schedule returns 0.003 for 1985-06-15, 0.001 for
     2005-06-15, and 0.0005 for 2020-06-15".
 
-    See docs/specs/backtester.md "Transaction costs → Test cases".
+    See specs/backtester.md "Transaction costs → Test cases".
     """
     assert default_cost_schedule(pd.Timestamp("1985-06-15")) == pytest.approx(0.003)
     assert default_cost_schedule(pd.Timestamp("2005-06-15")) == pytest.approx(0.001)
@@ -261,7 +261,7 @@ def test_nonzero_turnover_strategy_post_cost_cagr_lower():
     """Spec: "For strategies with non-zero turnover, the post-cost CAGR is
     strictly less than the hypothetical zero-cost CAGR".
 
-    See docs/specs/backtester.md "Transaction costs → Test cases".
+    See specs/backtester.md "Transaction costs → Test cases".
     """
     returns = _asset_returns(start="2000-01-03", end="2010-12-30")
     swap_args = (

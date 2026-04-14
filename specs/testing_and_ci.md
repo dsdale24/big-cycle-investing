@@ -59,7 +59,7 @@ that agents work in). Not in CI — no cache strategy yet.
 ### `@pytest.mark.spec`
 
 **What it means:** The test directly verifies an invariant or test case listed
-in a `docs/specs/*.md` file. Orthogonal to unit/integration — most `spec` tests
+in a `specs/*.md` file. Orthogonal to unit/integration — most `spec` tests
 are also `unit`, but some are `integration`.
 
 **Required:** the test's docstring must reference the spec and the specific
@@ -69,7 +69,7 @@ invariant or test case. Example:
 @pytest.mark.unit
 @pytest.mark.spec
 def test_spliced_gold_monthly_returns_match_proxy(...):
-    """docs/specs/backtester.md "Proxy series splicing → Test cases":
+    """specs/backtester.md "Proxy series splicing → Test cases":
     compounded monthly returns from spliced daily gold series equal
     WPUSI019011 monthly returns for any full month in 1975-2000."""
 ```
@@ -149,7 +149,7 @@ before any test runs.
 markers = [
   "unit: synthetic fixtures only; runs in CI and locally",
   "integration: uses real data/raw/ parquet cache; local only, skips if absent",
-  "spec: directly verifies an invariant listed in docs/specs/*.md",
+  "spec: directly verifies an invariant listed in specs/*.md",
 ]
 testpaths = ["tests"]
 # Fail the run if any test uses an unregistered marker.
@@ -215,7 +215,7 @@ the test for "every test has a marker". Additional invariants:
 2. Add `require_cache` fixture and collection hook to `tests/conftest.py`.
 3. Mark every test in `tests/test_proxy_splicing.py` as `@pytest.mark.unit`.
    Mark the four that directly verify a spec's test case as `@pytest.mark.spec`
-   as well, and ensure their docstrings reference `docs/specs/backtester.md`.
+   as well, and ensure their docstrings reference `specs/backtester.md`.
 4. Create `.github/workflows/tests.yml` running `pytest -m "not integration"`.
 5. Update `CLAUDE.md` "Setup & commands" with the four `pytest` invocations
    above. The "Where each category runs" section is canonical here; CLAUDE.md
