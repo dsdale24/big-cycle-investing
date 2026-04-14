@@ -19,6 +19,7 @@ Cross-platform: stdlib only, no jq or bash required.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 
@@ -31,14 +32,19 @@ def main() -> int:
         return 1
 
     worktree_path = payload.get("worktree_path")
-    worktree_name = payload.get("worktree_name")
     project_cwd = payload.get("cwd")
-    if not worktree_path or not project_cwd or not worktree_name:
+    if not worktree_path or not project_cwd:
         print(
-            "create_worktree_from_head: payload missing worktree_path, worktree_name, or cwd",
+            "create_worktree_from_head: payload missing worktree_path or cwd. "
+            f"Keys received: {sorted(payload.keys())}",
             file=sys.stderr,
         )
         return 1
+
+    # worktree_name may or may not be present depending on how the worktree is
+    # being created. Fall back to deriving it from the path's final component so
+    # the branch always has a name.
+    worktree_name = payload.get("worktree_name") or os.path.basename(worktree_path)
 
     # Match Claude Code's default branch-naming convention (worktree-<name>).
     # Without -b, the worktree is detached-HEAD and any commits the agent
