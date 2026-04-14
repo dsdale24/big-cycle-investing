@@ -141,6 +141,22 @@ subagents and reviewed before merging.
 isolated copy of the repo. This prevents conflicts with files the coordinator or user
 has open, and produces a clean diff to review before merging.
 
+**Worktree testing boundary:** Worktrees have a clean checkout but no populated
+`data/` directory (parquet cache is gitignored and lives in the main repo). This means:
+- **Tests using synthetic/fixture data** run fine in a worktree — prefer these for
+  any test that checks logic (splicing, conversion formulas, invariants).
+- **Tests that read real cached data** (e.g., loading fetched FRED/Yahoo parquet
+  files) will not find the cache and should either skip gracefully or be run by
+  the coordinator in the main repo after the agent reports.
+- **`scripts/fetch_data.py`** cannot be run from a worktree without the `.env`
+  file and network. If an agent needs coverage numbers or verification that
+  requires the full fetch, it must **report this back to the coordinator**
+  rather than work around it.
+
+Agents must NOT modify config, copy environment variables into the worktree, or
+change paths to escape the worktree boundary. If tests or scripts can't run from
+the worktree, that's a scope signal — report it, don't patch around it.
+
 **Background by default:** Coding agents should run with `run_in_background: true`
 when the task is well-specified. The spec is the contract — if the spec is complete,
 the agent doesn't need to interrupt the user for clarification. The coordinator can
@@ -164,6 +180,22 @@ contract lives in the prompt. Example:
 This gives the agent permission to stop and report rather than thrash. A stuck
 agent reporting "I'm blocked on X" is far more useful than one that spent 50
 tool calls rationalizing a wrong approach.
+
+**Reporting is success, workarounds are failure.** When an agent hits an
+obstacle — missing data, failing test that touches unrelated infrastructure,
+ambiguous spec, permission block — the correct response is to stop and report
+the obstacle. The incorrect response is to expand scope, modify unrelated
+config, or invent new flags to route around the problem. An agent that reports
+"I can't verify the compounding identity against real data because the parquet
+cache isn't in the worktree" has succeeded. An agent that silently copies `.env`
+into the worktree or patches paths to escape the boundary has failed the
+contract even if the code technically works.
+
+Every coding agent delegation prompt must explicitly state:
+- **Scope boundaries** — list what is out of scope (config files, unrelated
+  modules, other components' specs)
+- **Report-don't-patch** — if a test or script can't run from the worktree,
+  report it back rather than modifying config or environment to make it work
 
 **Why:** Separating writing from reviewing catches errors that flow-state coding misses.
 The coordinator stays at the spec level and never gets pulled into implementation details.
