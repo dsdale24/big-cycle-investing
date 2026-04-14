@@ -266,7 +266,7 @@ def build_asset_returns(
 
     ff = data.get("FEDFUNDS")
     if ff is not None:
-        ff_daily = ff.squeeze().resample("D").ffill() / 100 / 252
+        ff_daily = ff.squeeze().resample("B").ffill() / 100 / 252
     else:
         ff_daily = empty_datetime_series.copy()
 
@@ -278,6 +278,8 @@ def build_asset_returns(
         "commodities": comm_ret,
         "cash": ff_daily,
     })
+
+    returns = returns[returns.index.dayofweek < 5]
 
     returns = returns.loc[start_dt:]
 
