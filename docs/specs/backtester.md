@@ -1,7 +1,7 @@
 # Backtester Specification
 
 Status: **Stabilizing**
-Last updated: 2026-04-13 (bond return approximation validated — see issue #8)
+Last updated: 2026-04-14 (bond ETF splicing required by validation — see issues #8, #31)
 
 ## Purpose
 
@@ -45,8 +45,8 @@ Specifically:
 | Asset class | Primary source | Pre-data proxy | Notes |
 |-------------|---------------|----------------|-------|
 | equities | ^GSPC daily close | — | Available from 1975 |
-| long_bonds | Derived from 10Y yield (^TNX) | — | Return ≈ -duration × Δyield + yield/252 |
-| short_bonds | Derived from 2Y yield (GS2) | — | Return ≈ -2 × Δyield + yield/252 |
+| long_bonds | TLT adjusted close (2002-07-30+) | Derived from 10Y yield (^TNX), 1975 → 2002-07-29 | Spliced — see "ETF splicing" below |
+| short_bonds | SHY adjusted close (2002-07-30+) | Derived from 2Y yield (GS2), 1975 → 2002-07-29 | Spliced — see "ETF splicing" below |
 | gold | GC=F daily close (2000+) | WPUSI019011 monthly (1975-2000) | PPI: Metals & Metal Products; imperfect proxy, tracks directionally |
 | commodities | CL=F daily close (2000+) | DCOILWTICO daily (1986-2000), PPIACO monthly (1975-1986) | Two-stage proxy: WTI spot where available, PPI All Commodities before |
 | cash | FEDFUNDS / 252 | — | Monthly rate, forward-filled to daily |
@@ -138,11 +138,73 @@ continues to apply before the ETF start date.
   decade
 - Integration: same validation for short_bonds vs SHY
 
+### ETF splicing (mandatory for validated assets)
+
+The validation in #8 (`docs/research/bond_return_validation.md`) found that
+both `long_bonds` and `short_bonds` exceed the accuracy threshold over the
+2002+ overlap period — `long_bonds` violates the per-decade CAGR bound
+(up to 3.4 ppt/yr divergence in the 2010s, the convexity signature) and
+`short_bonds` violates the correlation bound (0.77 vs 0.90 floor). Per
+the rule above, both must splice ETF data for the overlap period.
+
+#### Splice points
+
+| Asset class | Date range | Source | Frequency |
+|---|---|---|---|
+| long_bonds | 1975-01-02 → 2002-07-29 | ^TNX duration approximation | daily (derived) |
+| long_bonds | 2002-07-30 → present | TLT (Yahoo) | daily |
+| short_bonds | 1975-01-02 → 2002-07-29 | GS2 duration approximation | daily (derived) |
+| short_bonds | 2002-07-30 → present | SHY (Yahoo) | daily |
+
+The splice date is the first trading day on which the ETF has data and
+belongs exclusively to the newer source (same exclusivity rule as
+"Proxy series splicing"). Splice dates are not hardcoded — they are
+derived dynamically as the first trading day of the ETF's history.
+
+#### Total-return sourcing
+
+ETF returns are computed from `pct_change()` of `Adj Close`, which
+incorporates dividend reinvestment. Bond ETFs distribute monthly coupon
+income, and using `Close` would discard a material fraction of total
+return — that is the whole reason the duration approximation includes a
+`yield / 252` carry term in the first place. The post-splice series must
+preserve the same total-return semantics as the pre-splice series.
+
+#### Invariants (bond splicing)
+
+- No gap, no overlap at the splice date — every business day belongs to
+  exactly one source
+- Source labels are populated on every business day the returns frame is
+  populated on (consistent with "Proxy series splicing → Invariants")
+- Pre-splice returns must equal the pure-approximation regime exactly —
+  splicing only replaces post-2002 returns
+- The post-splice series satisfies the accuracy threshold trivially
+  because it IS the ETF data over the overlap period
+
+#### Test cases (splicing)
+
+- The trading day immediately before the splice date is sourced from the
+  duration approximation; the splice date itself is sourced from TLT
+  (long_bonds) or SHY (short_bonds)
+- Pre-2002 spliced returns for both bond assets equal the duration
+  approximation produced by the same yield series (regression check
+  against the unspliced path)
+- For any month fully within the post-splice window, the spliced
+  monthly return equals the ETF monthly return (modulo float tolerance)
+- Source label transitions exactly once per asset, on the splice date,
+  with no NaN labels on populated business days
+
 ### Known open questions
-- Whether to switch to ETF data automatically once available, or continue
-  using the approximation for consistency across the full backtest.
-  Default in this spec: keep the approximation unless the threshold is
-  violated, to preserve uniform methodology across the period.
+
+- **Pre-2002 uncertainty communication.** The 1975 → 2002-07-29 window
+  uses the duration approximation and has no ETF benchmark to bound its
+  error. The convexity-bias pattern observed post-2002 is likely also
+  present pre-2002 (rates fell sharply over 1981-1999). Surfacing this
+  in `BacktestResult` metadata so analysis can flag pre-2002 bond
+  exposure as approximation-only is open. Tracked separately.
+- **1990s hybrid.** ICE BofA Treasury indices on FRED extend the
+  validation window earlier than TLT/SHY; could tighten the pre-2002
+  estimate without requiring a third splice. Out of scope for #31.
 
 ## Proxy series splicing
 
