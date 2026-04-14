@@ -33,7 +33,7 @@ cd notebooks && jupyter notebook
 
 # Tests (see docs/specs/testing_and_ci.md for full definitions)
 pytest                          # Everything (unit + integration + spec)
-pytest -m "not integration"     # Unit + spec-without-integration — CI, worktrees, quick feedback
+pytest -m "not integration"     # Unit + spec-without-integration — what CI runs, quick feedback
 pytest -m integration           # Only tests that need the parquet cache — local, after fetching data
 pytest -m spec                  # Only spec-anchored tests — audit "what enforces this spec?"
 ```
@@ -137,48 +137,36 @@ subagents and reviewed before merging.
 **The flow:**
 1. Coordinator reads the spec (or writes/updates it if needed)
 2. Coordinator creates the branch and delegates to a coding agent with the spec and context
-3. Coding agent implements and commits on the branch (uses `isolation: "worktree"`)
+3. Coding agent implements and commits on the current branch
 4. Coordinator delegates to a review agent to check implementation against spec
 5. Coordinator reviews findings, approves or sends back
 6. Coordinator pushes the branch and opens a pull request (never merges locally to main)
 7. Before merging, coordinator runs a **pre-merge review** of the PR — either via `/review-pr <number>` (which uses the canonical prompt at `docs/review_agent_prompt.md`) or by spawning a review agent manually. Merge only on PASS or PASS-WITH-NITS (see #15 for the Level 1/2/3 escalation path toward CI enforcement)
 8. Work is landed by merging the PR — this preserves a reviewable artifact, keeps a searchable history, and gives CI and the review agent a surface to hook into
 
-**Worktrees:** Coding agents should use `isolation: "worktree"` so they work on an
-isolated copy of the repo. This prevents conflicts with files the coordinator or user
-has open, and produces a clean diff to review before merging.
+**Coding agents work in the main checkout, not worktrees.** Earlier versions of
+this workflow used `isolation: "worktree"` for filesystem isolation, but for a
+solo project the overhead (env-var propagation, permission slicing, data-cache
+absence, hook complexity) outweighed the benefit. Subagents now operate in the
+coordinator's checkout on the current branch and commit there directly.
 
-Claude Code's default is to branch worktrees from `origin/HEAD` (i.e., main),
-regardless of which branch the coordinator is on. That's wrong for our flow —
-when the coordinator delegates from a feature branch with in-progress spec
-updates, the agent must see those updates. This project installs a
-`WorktreeCreate` hook at `.claude/hooks/create_worktree_from_head.py` that
-overrides the default and branches from the coordinator's current HEAD. Wired
-up in `.claude/settings.json` (committed). Result: delegation from any branch
-produces a worktree based at that branch's tip.
+Implications:
+- The coordinator should not have uncommitted code edits during a delegation —
+  any in-progress work belongs in a commit (or a separate branch) before
+  delegating, so the agent's diff is unambiguous.
+- `git diff` after the agent reports gives a clean review surface; no merge
+  step from a worktree branch is needed.
+- For measurement-style tasks (run a script, report numbers), prefer running
+  the script directly from the coordinator session — delegation overhead
+  exceeds benefit when there's no real implementation work to do.
+- Tests that depend on the parquet cache at `data/raw/` will work because the
+  cache is in the main checkout. The `@pytest.mark.integration` marker
+  (defined in `docs/specs/testing_and_ci.md`) still exists for tests that need
+  real data — they run locally, not in CI.
 
-`.env` is auto-copied into each subagent worktree via `.worktreeinclude`
-(committed). Agents must NOT copy `.env` manually or otherwise modify config to
-escape the worktree boundary — the copy is the sanctioned mechanism and needs
-no action from the agent.
-
-**Worktree testing boundary:** Worktrees have a clean checkout but no populated
-`data/` directory (parquet cache is gitignored and lives in the main repo). This means:
-- **Tests using synthetic/fixture data** run fine in a worktree — prefer these for
-  any test that checks logic (splicing, conversion formulas, invariants).
-- **Tests that read real cached data** (e.g., loading fetched FRED/Yahoo parquet
-  files) will not find the cache and should either skip gracefully or be run by
-  the coordinator in the main repo after the agent reports.
-- **`scripts/fetch_data.py`** can be run from a worktree (since `.env` is
-  auto-copied via `.worktreeinclude`), but will fetch into the worktree's own
-  `data/` directory — not the main cache. Agents needing cache verification
-  should still report back rather than re-fetching.
-
-Agents must NOT modify config or change paths to escape the worktree boundary.
-If tests or scripts can't run from the worktree, that's a scope signal — report
-it, don't patch around it.
-
-For full test category definitions and CI design, see docs/specs/testing_and_ci.md.
+Worktree-based isolation may be revisited in a future Claude Code version
+where the wrinkles (settings inheritance, env-var propagation, hook semantics)
+are smoother.
 
 **Background by default:** Coding agents should run with `run_in_background: true`
 when the task is well-specified. The spec is the contract — if the spec is complete,
@@ -208,17 +196,17 @@ tool calls rationalizing a wrong approach.
 obstacle — missing data, failing test that touches unrelated infrastructure,
 ambiguous spec, permission block — the correct response is to stop and report
 the obstacle. The incorrect response is to expand scope, modify unrelated
-config, or invent new flags to route around the problem. An agent that reports
-"I can't verify the compounding identity against real data because the parquet
-cache isn't in the worktree" has succeeded. An agent that silently copies `.env`
-into the worktree or patches paths to escape the boundary has failed the
-contract even if the code technically works.
+config, or invent wrappers to route around the problem. An agent that reports
+"I'm getting a permission denial on `python scripts/validate.py`, here's the
+exact command and error" has succeeded. An agent that creates a wrapper script
+to launder the same command past the allowlist has failed the contract even
+if the code technically works.
 
 Every coding agent delegation prompt must explicitly state:
 - **Scope boundaries** — list what is out of scope (config files, unrelated
   modules, other components' specs)
-- **Report-don't-patch** — if a test or script can't run from the worktree,
-  report it back rather than modifying config or environment to make it work
+- **Report-don't-patch** — if a tool or script can't run, report it back
+  rather than inventing workarounds
 
 **Why:** Separating writing from reviewing catches errors that flow-state coding misses.
 The coordinator stays at the spec level and never gets pulled into implementation details.
