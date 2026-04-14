@@ -99,7 +99,8 @@ you're about to stabilize, write the spec BEFORE the refactor.
 
 ## Workflow
 
-**All work happens on branches. Never commit directly to main.**
+**All work happens on branches. Never commit directly to main, and never merge
+branches locally to main — always land changes via a pull request.**
 
 | Branch prefix | Purpose | Spec required? |
 |---------------|---------|----------------|
@@ -133,7 +134,8 @@ subagents and reviewed before merging.
 3. Coding agent implements and commits on the branch (uses `isolation: "worktree"`)
 4. Coordinator delegates to a review agent to check implementation against spec
 5. Coordinator reviews findings, approves or sends back
-6. Coordinator merges to main
+6. Coordinator pushes the branch and opens a pull request (never merges locally to main)
+7. Work is landed by merging the PR — this preserves a reviewable artifact, keeps a searchable history, and gives the review agent (see issue #15) a surface to hook into
 
 **Worktrees:** Coding agents should use `isolation: "worktree"` so they work on an
 isolated copy of the repo. This prevents conflicts with files the coordinator or user
