@@ -14,7 +14,10 @@ surfaces what's new since the last time we looked.
 - User explicitly asks ("any Claude Code updates?", "check the changelog")
 - Re-evaluating a workflow issue that depends on upstream fixes — most
   notably **#33** (revisit worktree isolation)
-- Roughly every 1-2 weeks if nothing else has triggered a check
+- **Daily at session start** if `state.json`'s `last_checked` is more than
+  1 day old. Claude Code ships frequently (multiple releases most weeks);
+  a longer cadence means we'd miss fixes close to when they land. See
+  CLAUDE.md for the session-start ritual.
 
 ## Inputs
 

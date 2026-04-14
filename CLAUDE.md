@@ -122,10 +122,11 @@ Labels: `exploring`, `stabilizing`, `bug`, `data`. See issue #13 for the full ro
 
 **At session start (or when resuming after a gap):**
 - If `.claude/skills/changelog-check/state.json`'s `last_checked` is more than
-  ~7 days old, invoke `/skill changelog-check` to see if any Claude Code
-  updates affect this project's workflow. The skill reports new entries in
-  three buckets (ticks #33 / likely relevant / worth noting) and asks the
-  coordinator what to act on.
+  1 day old, invoke `/skill changelog-check` to see if any Claude Code
+  updates affect this project's workflow. Claude Code ships frequently
+  (multiple releases most weeks), so a daily cadence catches fixes close to
+  when they land. The skill reports new entries in three buckets (ticks #33
+  / likely relevant / worth noting) and asks the coordinator what to act on.
 - Check open issues with `gh issue list` before starting substantive work.
 
 Reference issues in commits (e.g., "Fixes #1"). Commits from `stable/*`
