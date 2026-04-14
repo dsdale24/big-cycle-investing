@@ -324,6 +324,25 @@ fred:
     frequency: monthly
     description: New privately-owned housing units started — supply constraint indicator
 
+  # --- Asset-Price Proxies (pre-2000 splicing; see backtester.md, issue #1) ---
+  WPUSI019011:
+    name: PPI Metals & Metal Products
+    category: asset_proxy
+    frequency: monthly
+    description: PPI Industry - Metals & Metal Products; monthly gold-return proxy for 1975-2000 before GC=F futures data begins
+
+  PPIACO:
+    name: PPI All Commodities
+    category: asset_proxy
+    frequency: monthly
+    description: Broad PPI All Commodities index; monthly commodity-return proxy for 1975-1986 before WTI spot data begins
+
+  DCOILWTICO:
+    name: WTI Crude Oil Spot
+    category: asset_proxy
+    frequency: daily
+    description: WTI crude oil spot price (Cushing); daily commodity-return proxy for 1986-2000 before CL=F futures data begins
+
   # --- Human Capital & Civilizational Health ---
   A939RX0Q048SBEA:
     name: Real GDP per Capita
