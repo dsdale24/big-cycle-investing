@@ -143,6 +143,28 @@ subagents and reviewed before merging.
 | **Coding agent** | Subagent | Implements on a branch per the spec. Commits to the branch. |
 | **Review agent** | Subagent | Reviews implementation against the spec. Flags deviations, missing tests, edge cases. |
 
+#### Coordinator deny list
+
+The coordinator must NOT directly edit any file under these top-level directories — all changes there go through a coding agent on a branch:
+
+- `configs/` — runtime configuration consumed by code
+- `data/` — cached data artifacts (gitignored, but listed for completeness)
+- `docs/` — research notes, framework docs, validation reports
+- `notebooks/` — exploratory analysis (Python in JSON form is still code)
+- `scripts/` — runnable Python scripts
+- `src/` — production code
+- `tests/` — test code
+
+The coordinator's editable surface is everything else: `CLAUDE.md`, `.claude/` (skills, settings, hooks, agents, slash commands), `specs/` (spec authorship is the coordinator's domain by design — see "Spec-driven development" above), and root-level meta files (`README.md`, `.gitignore`, `pyproject.toml`).
+
+**Why a directory-level deny list, not a judgment call.** "Is this code?" is a judgment that erodes ("is a YAML config code? a Jupyter notebook? a Python script in `scripts/`?"). "Is this path under one of these seven directories?" is not. When a deny-listed file needs to change — even a one-line markdown comment in a notebook or a path string in a config — delegate.
+
+**The two coordinator exceptions to no-touch.**
+1. **Measurement** — running scripts or tests to read numbers off the system. The coordinator runs `pytest`, `python scripts/validate_*.py`, etc., to gather state but does not edit those files.
+2. **Spec authorship** — `specs/` is coordinator territory by design (spec-driven development). The coordinator writes the contract; agents fulfill it.
+
+If you (the coordinator) catch yourself reaching for `Edit` or `Write` on a deny-listed path, stop and delegate. Even one-line fixes go through an agent — the boundary is what makes the maker-checker model work, and the boundary erodes one "just this once" at a time.
+
 **The flow:**
 1. Coordinator reads the spec (or writes/updates it if needed)
 2. Coordinator creates the branch and delegates to a coding agent with the spec and context
@@ -150,7 +172,7 @@ subagents and reviewed before merging.
 4. Coordinator delegates to a review agent to check implementation against spec
 5. Coordinator reviews findings, approves or sends back
 6. Coordinator pushes the branch and opens a pull request (never merges locally to main)
-7. Before merging, coordinator runs a **pre-merge review** of the PR — either via `/review-pr <number>` (which uses the canonical prompt at `docs/review_agent_prompt.md`) or by spawning a review agent manually. Merge only on PASS or PASS-WITH-NITS (see #15 for the Level 1/2/3 escalation path toward CI enforcement)
+7. Before merging, coordinator runs a **pre-merge review** of the PR — either via `/review-pr <number>` (which delegates to the `review-pr` subagent defined at `.claude/agents/review-pr.md`) or by spawning the agent directly with `Agent(subagent_type="review-pr", ...)`. Merge only on PASS or PASS-WITH-NITS (see #15 for the Level 1/2/3 escalation path toward CI enforcement)
 8. Work is landed by merging the PR — this preserves a reviewable artifact, keeps a searchable history, and gives CI and the review agent a surface to hook into
 
 **Coding agents work in the main checkout, not worktrees.** Earlier versions of
