@@ -125,7 +125,11 @@ def splice_returns(
     the source that supplied each date.
     """
     if not segments:
-        return pd.Series(dtype=float), pd.Series(dtype=object)
+        empty_idx = pd.DatetimeIndex([])
+        return (
+            pd.Series(dtype=float, index=empty_idx),
+            pd.Series(dtype=object, index=empty_idx),
+        )
 
     full_index = segments[0][0].index
     for seg, _ in segments[1:]:
@@ -136,9 +140,9 @@ def splice_returns(
     sources = pd.Series(pd.NA, index=full_index, dtype=object)
 
     for seg_returns, label in segments:
-        seg_returns = seg_returns.dropna()
-        returns.loc[seg_returns.index] = seg_returns.values
         sources.loc[seg_returns.index] = label
+        seg_valid = seg_returns.dropna()
+        returns.loc[seg_valid.index] = seg_valid.values
 
     return returns, sources
 
@@ -230,12 +234,14 @@ def build_asset_returns(
     """
     start_dt = pd.Timestamp(start)
 
+    empty_datetime_series = pd.Series(dtype=float, index=pd.DatetimeIndex([]))
+
     sp500 = data.get("^GSPC")
     if sp500 is not None:
         eq_ret = sp500["Close"].pct_change()
         trading_index = sp500.index
     else:
-        eq_ret = pd.Series(dtype=float)
+        eq_ret = empty_datetime_series.copy()
         trading_index = pd.DatetimeIndex([])
 
     tnx = data.get("^TNX")
@@ -245,7 +251,7 @@ def build_asset_returns(
         bond_ret = -duration * y.diff() + y.shift(1) / 252
         bond_ret = bond_ret.clip(-0.10, 0.10)
     else:
-        bond_ret = pd.Series(dtype=float)
+        bond_ret = empty_datetime_series.copy()
 
     gs2 = data.get("GS2_yield")
     if gs2 is not None:
@@ -253,7 +259,7 @@ def build_asset_returns(
         short_bond_ret = -2.0 * y2.diff() + y2.shift(1) / 252
         short_bond_ret = short_bond_ret.clip(-0.05, 0.05)
     else:
-        short_bond_ret = pd.Series(dtype=float)
+        short_bond_ret = empty_datetime_series.copy()
 
     gold_ret, gold_src = _build_gold_returns(data, trading_index)
     comm_ret, comm_src = _build_commodities_returns(data, trading_index)
@@ -262,7 +268,7 @@ def build_asset_returns(
     if ff is not None:
         ff_daily = ff.squeeze().resample("D").ffill() / 100 / 252
     else:
-        ff_daily = pd.Series(dtype=float)
+        ff_daily = empty_datetime_series.copy()
 
     returns = pd.DataFrame({
         "equities": eq_ret,
