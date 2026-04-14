@@ -42,7 +42,7 @@ class FixedWeightsStrategy:
         self.weights = dict(weights)
         self.name = name
 
-    def allocate(self, date, available_data):
+    def allocate(self, date, available_data, pre_rebalance_weights):
         return PortfolioSnapshot(
             date=date, weights=dict(self.weights), regime=self.name
         )
@@ -56,11 +56,25 @@ class BinarySwapStrategy:
         self.b = dict(b)
         self.flip = False
 
-    def allocate(self, date, available_data):
+    def allocate(self, date, available_data, pre_rebalance_weights):
         weights = self.b if self.flip else self.a
         self.flip = not self.flip
         return PortfolioSnapshot(
             date=date, weights=dict(weights), regime="swap"
+        )
+
+
+class DriftAcceptingStrategy:
+    """Strategy that returns ``pre_rebalance_weights`` unchanged.
+
+    A drift-accepting strategy treats whatever drift produced as the new
+    target, so turnover at each rebalance is exactly zero regardless of the
+    return process.
+    """
+
+    def allocate(self, date, available_data, pre_rebalance_weights):
+        return PortfolioSnapshot(
+            date=date, weights=dict(pre_rebalance_weights), regime="drift"
         )
 
 
@@ -71,29 +85,81 @@ class BinarySwapStrategy:
 
 @pytest.mark.unit
 @pytest.mark.spec
-def test_static_strategy_has_zero_turnover_and_cost():
-    """Spec: "A static strategy ... has turnover = 0 at every rebalance and
-    total costs.sum() == 0".
+def test_drift_accepting_strategy_has_zero_turnover_under_nonflat_returns():
+    """Spec: "A strategy whose output at each rebalance equals the current
+    pre_rebalance_weights (drift-accepting strategy) has turnover = 0 at every
+    rebalance and total costs.sum() == 0, regardless of the return process".
 
     See docs/specs/backtester.md "Transaction costs → Test cases".
     """
-    # Use flat returns (no drift) so the static profile stays on target
-    # between rebalances — otherwise drift generates real turnover even for
-    # a "static" target, which is correct behavior but not what this spec
-    # case is probing.
+    # Non-flat returns: drift actively moves weights between rebalances. A
+    # drift-accepting strategy re-adopts those drifted weights as its new
+    # target, so turnover is zero despite the drift.
+    returns = _asset_returns()
+    strategy = DriftAcceptingStrategy()
+
+    result = run_backtest(
+        strategy, returns, indicator_data={},
+        start=str(returns.index[0].date()),
+    )
+
+    assert (result.turnover == 0.0).all()
+    assert result.costs.sum() == 0.0
+
+
+@pytest.mark.unit
+@pytest.mark.spec
+def test_constant_target_static_strategy_has_zero_turnover_under_flat_returns():
+    """Spec: "A constant-target static strategy under flat returns (no drift)
+    has turnover = 0 at every rebalance — this is the degenerate case that
+    stresses the formula, not the realistic behavior".
+
+    See docs/specs/backtester.md "Transaction costs → Test cases".
+    """
+    # Flat returns matter: without drift, the portfolio stays on target
+    # between rebalances, so a constant-target strategy produces zero
+    # turnover. Any non-zero return would drift the weights and force real
+    # re-targeting turnover — see the companion test below.
     returns = _asset_returns() * 0.0
     strategy = FixedWeightsStrategy(
         {"equities": 0.6, "long_bonds": 0.4,
          "short_bonds": 0.0, "gold": 0.0, "commodities": 0.0, "cash": 0.0}
     )
 
-    result = run_backtest(strategy, returns, indicator_data={}, start=str(returns.index[0].date()))
+    result = run_backtest(
+        strategy, returns, indicator_data={},
+        start=str(returns.index[0].date()),
+    )
 
     # First rebalance moves from the equal-weight initialization to the
-    # static target; skip that and verify all *subsequent* rebalances are
+    # static target; skip that and verify all subsequent rebalances are
     # zero-turnover / zero-cost.
     assert (result.turnover.iloc[1:] == 0).all()
     assert result.costs.iloc[1:].sum() == 0
+
+
+@pytest.mark.unit
+@pytest.mark.spec
+def test_constant_target_static_strategy_has_positive_turnover_under_drift():
+    """Spec: "A constant-target static strategy under non-flat returns has
+    strictly positive turnover at most rebalances (drift forces
+    re-targeting)".
+
+    See docs/specs/backtester.md "Transaction costs → Test cases".
+    """
+    returns = _asset_returns()
+    strategy = FixedWeightsStrategy(
+        {"equities": 0.6, "long_bonds": 0.4,
+         "short_bonds": 0.0, "gold": 0.0, "commodities": 0.0, "cash": 0.0}
+    )
+
+    result = run_backtest(
+        strategy, returns, indicator_data={},
+        start=str(returns.index[0].date()),
+    )
+
+    assert result.turnover.max() > 0.0
+    assert result.costs.sum() > 0.0
 
 
 @pytest.mark.unit
@@ -148,37 +214,31 @@ def test_full_swap_turnover_is_one_and_cost_equals_rate():
 @pytest.mark.unit
 @pytest.mark.spec
 def test_zero_cost_rate_matches_precost_trajectory():
-    """Spec: "cost_rate = 0.0 produces a BacktestResult whose costs series is
-    all zeros and whose portfolio value trajectory matches the pre-cost
-    baseline to floating-point tolerance".
+    """Spec (docs/specs/backtester.md "Transaction costs → Test cases"):
 
-    See docs/specs/backtester.md "Transaction costs → Test cases".
+        cost_rate = 0.0 produces a BacktestResult whose costs series is all
+        zeros and whose portfolio_value series equals
+        (1 + portfolio_returns).cumprod() to floating-point tolerance.
     """
     returns = _asset_returns()
-    swapper_a = BinarySwapStrategy(
-        {"equities": 1.0, "long_bonds": 0.0, "short_bonds": 0.0,
-         "gold": 0.0, "commodities": 0.0, "cash": 0.0},
-        {"equities": 0.0, "long_bonds": 1.0, "short_bonds": 0.0,
-         "gold": 0.0, "commodities": 0.0, "cash": 0.0},
-    )
-    swapper_b = BinarySwapStrategy(
+    swapper = BinarySwapStrategy(
         {"equities": 1.0, "long_bonds": 0.0, "short_bonds": 0.0,
          "gold": 0.0, "commodities": 0.0, "cash": 0.0},
         {"equities": 0.0, "long_bonds": 1.0, "short_bonds": 0.0,
          "gold": 0.0, "commodities": 0.0, "cash": 0.0},
     )
 
-    result_free = run_backtest(swapper_a, returns, indicator_data={},
-                               cost_rate=0.0, start=str(returns.index[0].date()))
-    result_defaultfree = run_backtest(
-        swapper_b, returns, indicator_data={},
-        cost_rate=lambda _d: 0.0, start=str(returns.index[0].date())
+    result = run_backtest(
+        swapper, returns, indicator_data={},
+        cost_rate=0.0, start=str(returns.index[0].date()),
     )
 
-    assert (result_free.costs == 0).all()
+    assert (result.costs == 0.0).all()
+
+    expected_value = (1.0 + result.portfolio_returns).cumprod()
     pd.testing.assert_series_equal(
-        result_free.portfolio_value, result_defaultfree.portfolio_value,
-        check_exact=False, atol=1e-12,
+        result.portfolio_value, expected_value,
+        check_exact=False, atol=1e-12, check_names=False,
     )
 
 

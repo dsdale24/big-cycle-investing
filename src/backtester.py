@@ -346,10 +346,13 @@ class Strategy(Protocol):
         self,
         date: pd.Timestamp,
         available_data: dict[str, pd.DataFrame | pd.Series],
+        pre_rebalance_weights: dict[str, float],
     ) -> PortfolioSnapshot:
         """
-        Given a date and all data available up to that date,
-        return target portfolio weights.
+        Given a date, all data available up to that date, and the portfolio's
+        current (drifted) weights, return target portfolio weights.
+
+        See docs/specs/backtester.md "Strategy interface".
         """
         ...
 
@@ -366,7 +369,7 @@ class StaticStrategy:
         self.weights = {k: v / total for k, v in weights.items()}
         self.name = name
 
-    def allocate(self, date, available_data):
+    def allocate(self, date, available_data, pre_rebalance_weights):
         return PortfolioSnapshot(date=date, weights=self.weights, regime=self.name)
 
 
@@ -376,7 +379,7 @@ class AllWeatherStrategy:
     30% equities, 40% long bonds, 15% short bonds, 7.5% gold, 7.5% commodities
     """
 
-    def allocate(self, date, available_data):
+    def allocate(self, date, available_data, pre_rebalance_weights):
         return PortfolioSnapshot(
             date=date,
             weights={
@@ -471,7 +474,7 @@ class BigCycleStrategy:
 
         return regime, signals
 
-    def allocate(self, date, available_data):
+    def allocate(self, date, available_data, pre_rebalance_weights):
         regime, signals = self._classify_regime(date, available_data)
 
         # Start from base allocation
@@ -564,6 +567,12 @@ def run_backtest(
 
     rebal_set = set(rebalance_dates)
 
+    # Canonical asset-class set for pre_rebalance_weights: union of current
+    # weights and the asset-return columns the backtest was built with. Ensures
+    # a newly-introduced asset is exposed with weight 0.0 rather than absent.
+    # See docs/specs/backtester.md "Strategy interface → Invariants".
+    asset_class_keys = set(current_weights) | set(asset_returns.columns)
+
     for date in all_dates[all_dates >= start_dt]:
         # Rebalance?
         if date in rebal_set:
@@ -575,7 +584,12 @@ def run_backtest(
                 elif isinstance(df, pd.Series):
                     avail[key] = df.loc[:date]
 
-            snapshot = strategy.allocate(date, avail)
+            # Pass a copy so the strategy can't mutate runtime state.
+            pre_rebalance_weights = {
+                k: current_weights.get(k, 0.0) for k in asset_class_keys
+            }
+
+            snapshot = strategy.allocate(date, avail, pre_rebalance_weights)
             new_weights = snapshot.weights
 
             # Turnover uses the union of old and new asset keys so an asset
