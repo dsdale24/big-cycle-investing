@@ -403,7 +403,13 @@ yahoo:
   "TLT":
     name: 20+ Year Treasury ETF
     category: bonds
-    description: iShares 20+ Year Treasury Bond ETF
+    description: iShares 20+ Year Treasury Bond ETF; used to validate synthetic long_bonds return approximation (see docs/specs/backtester.md)
+    start_override: "2002-07-01"
+
+  "SHY":
+    name: 1-3 Year Treasury ETF
+    category: bonds
+    description: iShares 1-3 Year Treasury Bond ETF; used to validate synthetic short_bonds return approximation (see docs/specs/backtester.md)
     start_override: "2002-07-01"
 
   "TIP":
