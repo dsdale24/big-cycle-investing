@@ -1,7 +1,7 @@
 # Backtester Specification
 
 Status: **Stabilizing**
-Last updated: 2026-04-13
+Last updated: 2026-04-13 (pre-2000 proxy splicing added — see issue #1)
 
 ## Purpose
 
@@ -44,22 +44,89 @@ Specifically:
 | equities | ^GSPC daily close | — | Available from 1975 |
 | long_bonds | Derived from 10Y yield (^TNX) | — | Return ≈ -duration × Δyield + yield/252 |
 | short_bonds | Derived from 2Y yield (GS2) | — | Return ≈ -2 × Δyield + yield/252 |
-| gold | GC=F daily close | Proxy from FRED (pre-2000) | See issue #1 |
-| commodities | CL=F daily close | Proxy from FRED (pre-2000) | See issue #1 |
+| gold | GC=F daily close (2000+) | WPUSI019011 monthly (1975-2000) | PPI: Metals & Metal Products; imperfect proxy, tracks directionally |
+| commodities | CL=F daily close (2000+) | DCOILWTICO daily (1986-2000), PPIACO monthly (1975-1986) | Two-stage proxy: WTI spot where available, PPI All Commodities before |
 | cash | FEDFUNDS / 252 | — | Monthly rate, forward-filled to daily |
 
 ### Invariants
 - All return values must be finite (no NaN, no inf)
 - Daily returns should be bounded: |r| < 0.25 for any single day (circuit breaker)
-- Missing data periods must be filled with 0 (not NaN), representing a "no data,
-  assume flat" conservative approach. (This may change — see issue #1.)
+- Every asset class must have non-zero return data for the full backtest period
+  (1975-01-01 to present). Filling missing periods with 0 is forbidden for
+  assets with an available proxy — use the proxy instead.
+- Missing data periods for assets with **no** proxy may be filled with 0 (documented
+  per asset), but this must be flagged in the backtest config so downstream analysis
+  knows the period is degenerate.
 - When proxy data is spliced with primary data, there must be no gap and no overlap
-  at the splice point
+  at the splice point — the combined series is continuous across the splice date.
 
 ### Edge cases
 - Weekends/holidays: returns are 0 (or dates are skipped if using business days)
-- Pre-data periods: currently filled with 0; should be filled with proxy returns
-  after issue #1 is resolved
+- Pre-data periods: covered by proxy splicing (see below). Any remaining gap must
+  be explicitly documented.
+
+## Proxy series splicing
+
+### Purpose
+Primary daily price sources (GC=F for gold, CL=F for commodities) only begin ~2000
+on Yahoo Finance. Without proxies, pre-2000 returns are 0 for these assets, which
+biases 1975-2000 backtest results against any strategy allocating to them.
+
+### Splice points
+| Asset class | Date range | Source | Frequency |
+|---|---|---|---|
+| gold | 1975-01-01 → 2000-08-29 | WPUSI019011 (FRED) | monthly |
+| gold | 2000-08-30 → present | GC=F (Yahoo) | daily |
+| commodities | 1975-01-01 → 1985-12-31 | PPIACO (FRED) | monthly |
+| commodities | 1986-01-02 → 2000-08-22 | DCOILWTICO (FRED) | daily |
+| commodities | 2000-08-23 → present | CL=F (Yahoo) | daily |
+
+Exact splice dates must be the first trading day that the newer source has data.
+Splice date belongs to the newer source (exclusive on the older, inclusive on the newer).
+
+### Monthly → daily return conversion
+Monthly proxy series (WPUSI019011, PPIACO) are levels, not returns. Conversion rule:
+1. Compute monthly returns from the level series: `monthly_ret = level.pct_change()`
+2. Distribute each monthly return across the trading days in that month such that
+   compounded daily returns equal the monthly return:
+   `daily_ret = (1 + monthly_ret) ** (1 / n_trading_days_in_month) - 1`
+3. Apply this daily_ret to every trading day within the month
+
+**Why even distribution:** the proxy is coarse; pretending we know intra-month
+timing we don't have would manufacture false signal. Even distribution makes
+monthly-frequency truth self-consistent at the daily level without fabricating
+information.
+
+### Invariants (splicing)
+- The spliced daily series must compound to the source's native-frequency returns
+  to within 1e-6 tolerance (a daily series built from PPIACO must compound to
+  PPIACO's monthly returns over any full-month window)
+- No NaN values anywhere in 1975-01-01 → present
+- No gap or overlap at splice points — every trading day belongs to exactly one source
+- The source used on each date must be queryable from the output (e.g., a
+  `source` column or companion Series) so analysis can distinguish proxy from
+  primary periods
+
+### Test cases
+- Given WPUSI019011 monthly returns of +1% for February 1980, every trading day
+  in February 1980 has the same daily return r where `(1+r)^n ≈ 1.01` for n
+  trading days in February 1980
+- Given the 1986-01-02 splice for commodities, 1985-12-31 belongs to PPIACO and
+  1986-01-02 belongs to DCOILWTICO; no day belongs to both
+- Given the 2000-08-23 splice for commodities, the day before belongs to
+  DCOILWTICO and the day of belongs to CL=F
+- Loading asset returns for date 1975-06-15 returns non-zero values for both
+  gold and commodities columns
+- Compounded monthly returns from the spliced daily gold series, for any full
+  month in 1975-2000, equal WPUSI019011 monthly returns for that month
+
+### Known limitations
+- WPUSI019011 is a metals-and-metal-products PPI, not a gold price; correlation
+  to actual gold returns is imperfect. This is documented tracking error accepted
+  in exchange for non-zero returns.
+- PPIACO is a broad commodity basket, not crude oil; the pre-1986 commodity
+  series measures a different thing than post-1986. This is a semantic splice,
+  not just a data-source splice — document it in backtest outputs.
 
 ## Strategy interface
 
