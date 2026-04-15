@@ -9,6 +9,8 @@ import numpy as np
 from dataclasses import dataclass, field
 from typing import Callable, Protocol
 
+from .indicators import regime_classifier
+
 # ---------------------------------------------------------------------------
 # Pre-2000 proxy splicing configuration (see specs/backtester.md, issue #1)
 # ---------------------------------------------------------------------------
@@ -75,6 +77,24 @@ def default_cost_schedule(date: pd.Timestamp) -> float:
 # ---------------------------------------------------------------------------
 
 ASSET_CLASSES = ["equities", "long_bonds", "short_bonds", "gold", "commodities", "cash"]
+
+
+# ---------------------------------------------------------------------------
+# Regime nudges (see BigCycleStrategy, issue #2)
+# ---------------------------------------------------------------------------
+#
+# Per-regime allocation deltas expressed relative to the strategy's base
+# weights. The binary BigCycle path applies the full delta when its discrete
+# classifier picks a regime; the scored path scales each delta by the regime's
+# score in [0, 1] from ``regime_classifier()`` and sums contributions across
+# all regimes. "expansion" is the neutral regime — no nudges.
+
+REGIME_NUDGES: dict[str, dict[str, float]] = {
+    "expansion": {},
+    "overheating": {"gold": +0.10, "equities": -0.10},
+    "contraction": {"cash": +0.15, "equities": -0.10, "long_bonds": +0.05},
+    "reflation":   {"equities": +0.10, "cash": -0.10},
+}
 
 
 @dataclass
@@ -573,7 +593,23 @@ class BigCycleStrategy:
     Regime-adaptive strategy — shifts allocation based on macro indicators.
     This is the strategy to iterate on.
 
-    Config dict controls thresholds and weights.
+    Two modes are supported (see issue #2):
+
+    - ``"binary"`` — original behavior: a single discrete regime label is
+      chosen from hard thresholds (yield curve inversion, inflation > 4%,
+      negative real rates) and the full corresponding nudge from
+      ``REGIME_NUDGES`` is applied all-or-nothing.
+    - ``"scored"`` (default) — consumes ``src.indicators.regime_classifier``
+      and scales each regime's nudge by its score in ``[0, 1]``. Multiple
+      regimes can contribute simultaneously (e.g., a partial overheat that
+      is also drifting toward contraction). When no score data is available
+      at ``date``, the strategy falls back to the base allocation unchanged.
+
+    The nudge deltas themselves live in the module-level ``REGIME_NUDGES``
+    constant so both paths share the same per-regime intentions; only the
+    trigger mechanism differs.
+
+    Config dict controls base weights and binary-mode thresholds.
     """
 
     DEFAULT_CONFIG = {
@@ -583,22 +619,36 @@ class BigCycleStrategy:
         "base_gold": 0.15,
         "base_commodities": 0.10,
         "base_cash": 0.10,
-        # Adjustments per regime
-        "overheating_gold_add": 0.10,
-        "overheating_equity_sub": 0.10,
-        "contraction_cash_add": 0.15,
-        "contraction_equity_sub": 0.10,
-        "contraction_bond_add": 0.05,
-        "reflation_equity_add": 0.10,
-        "reflation_cash_sub": 0.10,
-        # Thresholds
+        # Thresholds (binary mode only)
         "yield_curve_inversion_threshold": 0.0,
         "inflation_high_threshold": 4.0,
         "real_rate_negative_threshold": 0.0,
     }
 
-    def __init__(self, config: dict | None = None):
+    def __init__(self, config: dict | None = None, mode: str = "scored"):
+        if mode not in ("binary", "scored"):
+            raise ValueError(f"mode must be 'binary' or 'scored', got {mode!r}")
         self.config = {**self.DEFAULT_CONFIG, **(config or {})}
+        self.mode = mode
+
+    def _base_weights(self) -> dict[str, float]:
+        return {
+            "equities": self.config["base_equities"],
+            "long_bonds": self.config["base_long_bonds"],
+            "short_bonds": self.config["base_short_bonds"],
+            "gold": self.config["base_gold"],
+            "commodities": self.config["base_commodities"],
+            "cash": self.config["base_cash"],
+        }
+
+    @staticmethod
+    def _clamp_and_normalize(weights: dict[str, float]) -> dict[str, float]:
+        clamped = {k: max(0.0, v) for k, v in weights.items()}
+        total = sum(clamped.values())
+        if total <= 0:
+            n = len(clamped)
+            return {k: 1.0 / n for k in clamped}
+        return {k: v / total for k, v in clamped.items()}
 
     def _classify_regime(self, date, data):
         """Simple regime classification using only data available at `date`."""
@@ -648,37 +698,97 @@ class BigCycleStrategy:
 
         return regime, signals
 
-    def allocate(self, date, available_data, pre_rebalance_weights):
+    def _allocate_binary(self, date, available_data):
         regime, signals = self._classify_regime(date, available_data)
 
-        # Start from base allocation
-        w = {
-            "equities": self.config["base_equities"],
-            "long_bonds": self.config["base_long_bonds"],
-            "short_bonds": self.config["base_short_bonds"],
-            "gold": self.config["base_gold"],
-            "commodities": self.config["base_commodities"],
-            "cash": self.config["base_cash"],
-        }
+        w = self._base_weights()
+        for asset, delta in REGIME_NUDGES.get(regime, {}).items():
+            w[asset] = w.get(asset, 0.0) + delta
 
-        # Regime adjustments
-        if regime == "overheating":
-            w["gold"] += self.config["overheating_gold_add"]
-            w["equities"] -= self.config["overheating_equity_sub"]
-        elif regime == "contraction":
-            w["cash"] += self.config["contraction_cash_add"]
-            w["equities"] -= self.config["contraction_equity_sub"]
-            w["long_bonds"] += self.config["contraction_bond_add"]
-        elif regime == "reflation":
-            w["equities"] += self.config["reflation_equity_add"]
-            w["cash"] -= self.config["reflation_cash_sub"]
-
-        # Clamp and normalize
-        w = {k: max(0, v) for k, v in w.items()}
-        total = sum(w.values())
-        w = {k: v / total for k, v in w.items()}
-
+        w = self._clamp_and_normalize(w)
         return PortfolioSnapshot(date=date, weights=w, signals=signals, regime=regime)
+
+    def _compute_regime_scores(
+        self, date, available_data
+    ) -> tuple[dict[str, float], dict[str, float]]:
+        """Derive regime scores at ``date`` via ``regime_classifier``.
+
+        Returns (scores, signals). If any required input series is missing or
+        does not have enough history at ``date`` for the derived indicators to
+        land on a valid row, returns empty scores — callers fall back to base
+        weights. This is the "no data" edge case the scored path handles
+        explicitly rather than papering over with fillna.
+        """
+        signals: dict[str, float] = {}
+
+        t10y2y = available_data.get("T10Y2Y")
+        cpi = available_data.get("CPIAUCSL")
+        fedfunds = available_data.get("FEDFUNDS")
+        debt_gdp = available_data.get("GFDEGDQ188S")
+
+        if any(s is None for s in (t10y2y, cpi, fedfunds, debt_gdp)):
+            return {}, signals
+
+        yc_series = _as_series(t10y2y).loc[:date].dropna()
+        cpi_series = _as_series(cpi).loc[:date].dropna()
+        ff_series = _as_series(fedfunds).loc[:date].dropna()
+        debt_series = _as_series(debt_gdp).loc[:date].dropna()
+
+        if yc_series.empty or len(cpi_series) < 13 or ff_series.empty or len(debt_series) < 5:
+            return {}, signals
+
+        inflation_yoy = cpi_series.resample("ME").last().pct_change(12) * 100
+        real_rate_s = ff_series.resample("ME").last() - inflation_yoy
+        debt_accel = debt_series.resample("QE").last().diff(4)
+
+        regimes = regime_classifier(
+            yield_curve=yc_series,
+            inflation_yoy=inflation_yoy,
+            debt_accel=debt_accel,
+            real_rate_series=real_rate_s,
+        )
+
+        if regimes.empty:
+            return {}, signals
+
+        latest = regimes.iloc[-1]
+        scores = {regime: float(latest[regime]) for regime in regimes.columns}
+
+        signals["yield_curve"] = float(yc_series.iloc[-1])
+        if not inflation_yoy.dropna().empty:
+            signals["inflation_yoy"] = float(inflation_yoy.dropna().iloc[-1])
+        if not real_rate_s.dropna().empty:
+            signals["real_rate"] = float(real_rate_s.dropna().iloc[-1])
+        if not debt_accel.dropna().empty:
+            signals["debt_accel"] = float(debt_accel.dropna().iloc[-1])
+
+        return scores, signals
+
+    def _allocate_scored(self, date, available_data):
+        scores, signals = self._compute_regime_scores(date, available_data)
+
+        w = self._base_weights()
+        for regime, score in scores.items():
+            for asset, delta in REGIME_NUDGES.get(regime, {}).items():
+                w[asset] = w.get(asset, 0.0) + score * delta
+
+        w = self._clamp_and_normalize(w)
+
+        if scores:
+            dominant = max(scores, key=scores.get)
+            regime_label = f"scored:{dominant}={scores[dominant]:.2f}"
+        else:
+            regime_label = "scored:none"
+
+        snapshot_signals = {**signals, **{f"score_{k}": v for k, v in scores.items()}}
+        return PortfolioSnapshot(
+            date=date, weights=w, signals=snapshot_signals, regime=regime_label
+        )
+
+    def allocate(self, date, available_data, pre_rebalance_weights):
+        if self.mode == "binary":
+            return self._allocate_binary(date, available_data)
+        return self._allocate_scored(date, available_data)
 
 
 # ---------------------------------------------------------------------------
