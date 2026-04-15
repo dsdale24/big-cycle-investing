@@ -1,0 +1,244 @@
+{
+  "uk_public_debt_gdp": {
+    "rows": 317,
+    "start": "1700-12-31",
+    "end": "2016-12-31",
+    "path": "/Users/darren/Projects/big-cycle-investing/data/raw/uk/uk_public_debt_gdp.parquet",
+    "sheet": "A1. Headline series",
+    "column": 73,
+    "units": "% of nominal GDP"
+  },
+  "uk_public_receipts_gdp": {
+    "rows": 117,
+    "start": "1900-12-31",
+    "end": "2016-12-31",
+    "path": "/Users/darren/Projects/big-cycle-investing/data/raw/uk/uk_public_receipts_gdp.parquet",
+    "sheet": "A1. Headline series",
+    "column": 69,
+    "units": "% of nominal GDP"
+  },
+  "uk_public_spending_gdp": {
+    "rows": 117,
+    "start": "1900-12-31",
+    "end": "2016-12-31",
+    "path": "/Users/darren/Projects/big-cycle-investing/data/raw/uk/uk_public_spending_gdp.parquet",
+    "sheet": "A1. Headline series",
+    "column": 67,
+    "units": "% of nominal GDP"
+  },
+  "uk_public_deficit_gdp": {
+    "rows": 317,
+    "start": "1700-12-31",
+    "end": "2016-12-31",
+    "path": "/Users/darren/Projects/big-cycle-investing/data/raw/uk/uk_public_deficit_gdp.parquet",
+    "sheet": "A1. Headline series",
+    "column": 71,
+    "units": "% of nominal GDP"
+  },
+  "uk_bank_rate": {
+    "rows": 323,
+    "start": "1694-12-31",
+    "end": "2016-12-31",
+    "path": "/Users/darren/Projects/big-cycle-investing/data/raw/uk/uk_bank_rate.parquet",
+    "sheet": "A1. Headline series",
+    "column": 44,
+    "units": "% end period"
+  },
+  "uk_cpi": {
+    "rows": 808,
+    "start": "1209-12-31",
+    "end": "2016-12-31",
+    "path": "/Users/darren/Projects/big-cycle-investing/data/raw/uk/uk_cpi.parquet",
+    "sheet": "A1. Headline series",
+    "column": 40,
+    "units": "2015=100"
+  },
+  "uk_cpi_inflation": {
+    "rows": 807,
+    "start": "1210-12-31",
+    "end": "2016-12-31",
+    "path": "/Users/darren/Projects/big-cycle-investing/data/raw/uk/uk_cpi_inflation.parquet",
+    "sheet": "A1. Headline series",
+    "column": 41,
+    "units": "%"
+  },
+  "uk_broad_money": {
+    "rows": 173,
+    "start": "1844-12-31",
+    "end": "2016-12-31",
+    "path": "/Users/darren/Projects/big-cycle-investing/data/raw/uk/uk_broad_money.parquet",
+    "sheet": "A1. Headline series",
+    "column": 65,
+    "units": "\u00a3mn, year end"
+  },
+  "uk_monetary_base": {
+    "rows": 184,
+    "start": "1833-12-31",
+    "end": "2016-12-31",
+    "path": "/Users/darren/Projects/big-cycle-investing/data/raw/uk/uk_monetary_base.parquet",
+    "sheet": "A1. Headline series",
+    "column": 63,
+    "units": "\u00a3mn, year end"
+  },
+  "uk_boe_balance_sheet_gdp": {
+    "rows": 316,
+    "start": "1701-12-31",
+    "end": "2016-12-31",
+    "path": "/Users/darren/Projects/big-cycle-investing/data/raw/uk/uk_boe_balance_sheet_gdp.parquet",
+    "sheet": "A1. Headline series",
+    "column": 59,
+    "units": "% of nominal GDP"
+  },
+  "uk_10yr_gilt": {
+    "rows": 88,
+    "start": "1929-12-31",
+    "end": "2016-12-31",
+    "path": "/Users/darren/Projects/big-cycle-investing/data/raw/uk/uk_10yr_gilt.parquet",
+    "sheet": "A1. Headline series",
+    "column": 46,
+    "units": "%, calendar year average"
+  },
+  "uk_consols_yield": {
+    "rows": 314,
+    "start": "1703-12-31",
+    "end": "2016-12-31",
+    "path": "/Users/darren/Projects/big-cycle-investing/data/raw/uk/uk_consols_yield.parquet",
+    "sheet": "A1. Headline series",
+    "column": 47,
+    "units": "%, calendar year average"
+  },
+  "uk_share_prices": {
+    "rows": 317,
+    "start": "1700-12-31",
+    "end": "2016-12-31",
+    "path": "/Users/darren/Projects/big-cycle-investing/data/raw/uk/uk_share_prices.parquet",
+    "sheet": "A1. Headline series",
+    "column": 51,
+    "units": "April 1962=100, year end"
+  },
+  "uk_usd_gbp_rate": {
+    "rows": 226,
+    "start": "1791-12-31",
+    "end": "2016-12-31",
+    "path": "/Users/darren/Projects/big-cycle-investing/data/raw/uk/uk_usd_gbp_rate.parquet",
+    "sheet": "A1. Headline series",
+    "column": 52,
+    "units": "$ per \u00a3, calendar year average"
+  },
+  "uk_real_usd_gbp_rate": {
+    "rows": 226,
+    "start": "1791-12-31",
+    "end": "2016-12-31",
+    "path": "/Users/darren/Projects/big-cycle-investing/data/raw/uk/uk_real_usd_gbp_rate.parquet",
+    "sheet": "A1. Headline series",
+    "column": 53,
+    "units": "1913=100, calendar year average"
+  },
+  "uk_nominal_eri": {
+    "rows": 147,
+    "start": "1870-12-31",
+    "end": "2016-12-31",
+    "path": "/Users/darren/Projects/big-cycle-investing/data/raw/uk/uk_nominal_eri.parquet",
+    "sheet": "A1. Headline series",
+    "column": 54,
+    "units": "1913=100, calendar year average"
+  },
+  "uk_real_eri": {
+    "rows": 147,
+    "start": "1870-12-31",
+    "end": "2016-12-31",
+    "path": "/Users/darren/Projects/big-cycle-investing/data/raw/uk/uk_real_eri.parquet",
+    "sheet": "A1. Headline series",
+    "column": 55,
+    "units": "1913=100, calendar year average"
+  },
+  "uk_house_prices": {
+    "rows": 172,
+    "start": "1845-12-31",
+    "end": "2016-12-31",
+    "path": "/Users/darren/Projects/big-cycle-investing/data/raw/uk/uk_house_prices.parquet",
+    "sheet": "A1. Headline series",
+    "column": 56,
+    "units": "Jan 2015=100, calendar year average"
+  },
+  "uk_agricultural_land": {
+    "rows": 78,
+    "start": "1892-12-31",
+    "end": "1969-12-31",
+    "path": "/Users/darren/Projects/big-cycle-investing/data/raw/uk/uk_agricultural_land.parquet",
+    "sheet": "A32. Property prices & rent",
+    "column": 28,
+    "units": "\u00a3000s per acre"
+  },
+  "uk_oil_price_usd": {
+    "rows": 156,
+    "start": "1861-12-31",
+    "end": "2016-12-31",
+    "path": "/Users/darren/Projects/big-cycle-investing/data/raw/uk/uk_oil_price_usd.parquet",
+    "sheet": "A1. Headline series",
+    "column": 38,
+    "units": "$ per barrel"
+  },
+  "uk_real_gdp": {
+    "rows": 317,
+    "start": "1700-12-31",
+    "end": "2016-12-31",
+    "path": "/Users/darren/Projects/big-cycle-investing/data/raw/uk/uk_real_gdp.parquet",
+    "sheet": "A1. Headline series",
+    "column": 1,
+    "units": "\u00a3mn, chained 2013 prices"
+  },
+  "uk_real_gdp_growth": {
+    "rows": 316,
+    "start": "1701-12-31",
+    "end": "2016-12-31",
+    "path": "/Users/darren/Projects/big-cycle-investing/data/raw/uk/uk_real_gdp_growth.parquet",
+    "sheet": "A1. Headline series",
+    "column": 2,
+    "units": "%"
+  },
+  "uk_nominal_gdp": {
+    "rows": 317,
+    "start": "1700-12-31",
+    "end": "2016-12-31",
+    "path": "/Users/darren/Projects/big-cycle-investing/data/raw/uk/uk_nominal_gdp.parquet",
+    "sheet": "A1. Headline series",
+    "column": 22,
+    "units": "\u00a3mn"
+  },
+  "uk_unemployment_rate": {
+    "rows": 257,
+    "start": "1760-12-31",
+    "end": "2016-12-31",
+    "path": "/Users/darren/Projects/big-cycle-investing/data/raw/uk/uk_unemployment_rate.parquet",
+    "sheet": "A1. Headline series",
+    "column": 27,
+    "units": "%"
+  },
+  "uk_current_account_gdp": {
+    "rows": 245,
+    "start": "1772-12-31",
+    "end": "2016-12-31",
+    "path": "/Users/darren/Projects/big-cycle-investing/data/raw/uk/uk_current_account_gdp.parquet",
+    "sheet": "A1. Headline series",
+    "column": 80,
+    "units": "% of nominal GDP"
+  },
+  "uk_trade_deficit_gdp": {
+    "rows": 201,
+    "start": "1816-12-31",
+    "end": "2016-12-31",
+    "path": "/Users/darren/Projects/big-cycle-investing/data/raw/uk/uk_trade_deficit_gdp.parquet",
+    "sheet": "A1. Headline series",
+    "column": 78,
+    "units": "% of nominal GDP"
+  },
+  "sterling_reserve_share": {
+    "status": "unavailable",
+    "note": "Deferred to follow-up issue; documented here so future phases have the gap logged."
+  },
+  "gold_price_gbp": {
+    "status": "unavailable",
+    "note": "Deferred \u2014 requires non-BoE source for the post-1931 series."
+  }
+}

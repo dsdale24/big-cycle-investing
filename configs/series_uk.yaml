@@ -1,0 +1,359 @@
+# UK data series registry — Bank of England "A Millennium of Macroeconomic Data" (v3.1)
+#
+# Source: https://www.bankofengland.co.uk/statistics/research-datasets
+# Cached locally at: data/raw/uk/_source/millennium_of_macro_data.xlsx
+#
+# The workbook is annual (with some quarterly / monthly supplementary sheets).
+# Phase A of issue #52 uses the consolidated "A1. Headline series" sheet where
+# possible, which already integrates the clean measures from each of the
+# detailed A-series sheets. See src/data_fetcher_uk.py for layout assumptions.
+#
+# Column indices reference A1 positions verified 2026-04-15 against workbook v3.1.
+# `publication_lag_days` is a best-estimate for walk-forward backtesting (BoE
+# re-estimates historical series periodically, so any real walk-forward test
+# must treat these as estimates — see notes in specs/theses/backtest-sample-scope.md).
+
+boe:
+  # -------- Fiscal (category: fiscal) --------
+  uk_public_debt_gdp:
+    sheet: "A1. Headline series"
+    column: 73
+    name: UK Public Sector Debt (% GDP)
+    category: fiscal
+    frequency: annual
+    units: "% of nominal GDP"
+    publication_lag_days: 365
+    description: |
+      UK public-sector debt nominal par value / nominal GDP, calendar year-end.
+      Central government only prior to 1900. Primary fiscal-stress indicator for
+      the umbrella thesis in a UK-transition context.
+    notes: "A1 col 73 is 'measure 1'; col 74 is 'measure 2' (alternative nominal GDP denominator)."
+
+  uk_public_receipts_gdp:
+    sheet: "A1. Headline series"
+    column: 69
+    name: UK Public Sector Total Receipts (% GDP)
+    category: fiscal
+    frequency: annual
+    units: "% of nominal GDP"
+    publication_lag_days: 365
+    description: Total government tax + non-tax receipts as share of nominal GDP.
+
+  uk_public_spending_gdp:
+    sheet: "A1. Headline series"
+    column: 67
+    name: UK Public Sector Total Managed Expenditure (% GDP)
+    category: fiscal
+    frequency: annual
+    units: "% of nominal GDP"
+    publication_lag_days: 365
+    description: Total government outlays as share of nominal GDP.
+
+  uk_public_deficit_gdp:
+    sheet: "A1. Headline series"
+    column: 71
+    name: UK Public Sector Net Borrowing (% GDP)
+    category: fiscal
+    frequency: annual
+    units: "% of nominal GDP"
+    publication_lag_days: 365
+    description: |
+      Public sector net lending (+) / borrowing (-) as share of nominal GDP.
+      Positive = surplus, negative = deficit. Overall balance (not primary).
+
+  # -------- Monetary (category: monetary) --------
+  uk_bank_rate:
+    sheet: "A1. Headline series"
+    column: 44
+    name: UK Bank Rate (End Period)
+    category: monetary
+    frequency: annual
+    units: "% end period"
+    publication_lag_days: 1
+    description: Official policy rate of the Bank of England, end-period.
+
+  uk_cpi:
+    sheet: "A1. Headline series"
+    column: 40
+    name: UK Consumer Price Index
+    category: monetary
+    frequency: annual
+    units: "2015=100"
+    publication_lag_days: 30
+    description: BoE composite consumer price index, base 2015=100.
+
+  uk_cpi_inflation:
+    sheet: "A1. Headline series"
+    column: 41
+    name: UK Consumer Price Inflation (YoY)
+    category: monetary
+    frequency: annual
+    units: "%"
+    publication_lag_days: 30
+    description: Year-on-year change in UK CPI (BoE composite).
+
+  uk_broad_money:
+    sheet: "A1. Headline series"
+    column: 65
+    name: UK Broad Money (M3/M4 spliced)
+    category: monetary
+    frequency: annual
+    units: "£mn, year end"
+    publication_lag_days: 60
+    description: |
+      Spliced break-adjusted broad money aggregate based on M3/M4/M4x.
+      BoE's consistent long series across the monetary-target regime changes of
+      the 1970s-1980s.
+
+  uk_monetary_base:
+    sheet: "A1. Headline series"
+    column: 63
+    name: UK Monetary Base (M0)
+    category: monetary
+    frequency: annual
+    units: "£mn, year end"
+    publication_lag_days: 30
+    description: Notes + coin in circulation outside BoE plus bankers' deposits at BoE.
+
+  uk_boe_balance_sheet_gdp:
+    sheet: "A1. Headline series"
+    column: 59
+    name: Bank of England Balance Sheet (% GDP)
+    category: monetary
+    frequency: annual
+    units: "% of nominal GDP"
+    publication_lag_days: 30
+    description: |
+      BoE total balance sheet / nominal GDP (unconsolidated).
+      Useful as a monetization-proxy indicator across the 20th century.
+
+  # -------- Rates (category: rates) --------
+  uk_10yr_gilt:
+    sheet: "A1. Headline series"
+    column: 46
+    name: UK 10-year / medium-term Government Bond Yield
+    category: rates
+    frequency: annual
+    units: "%, calendar year average"
+    publication_lag_days: 1
+    description: |
+      BoE composite long-bond yield series. Pre-WW2 this is largely the Consols
+      yield (col 47 in A1); post-WW2 this transitions to conventional 10-year
+      gilt yields. Splice is handled upstream by BoE — see `splice_with`.
+    splice_with: uk_consols_yield
+    notes: "BoE's 'medium-term government bond yields' series is already a splice over Consols and post-WW2 gilts."
+
+  uk_consols_yield:
+    sheet: "A1. Headline series"
+    column: 47
+    name: UK Consols / Long-term Government Bond Yield
+    category: rates
+    frequency: annual
+    units: "%, calendar year average"
+    publication_lag_days: 1
+    description: |
+      Perpetual-Consols yield, calendar-year average. Continuous back to the
+      early 1700s; the dominant long-duration sovereign yield series for the
+      1900-1960 window before conventional 10-year gilts become standard.
+
+  # -------- Financial assets (category: asset_price) --------
+  uk_share_prices:
+    sheet: "A1. Headline series"
+    column: 51
+    name: UK Share Price Index (spliced)
+    category: asset_price
+    frequency: annual
+    units: "April 1962=100, year end"
+    publication_lag_days: 1
+    description: |
+      BoE composite share price index, year-end. Splices historical share
+      indices through to the modern FTSE All-Share. Price index, not total
+      return.
+
+  uk_usd_gbp_rate:
+    sheet: "A1. Headline series"
+    column: 52
+    name: USD per GBP Exchange Rate
+    category: asset_price
+    frequency: annual
+    units: "$ per £, calendar year average"
+    publication_lag_days: 1
+    description: Nominal $/£ exchange rate, calendar-year average.
+
+  uk_real_usd_gbp_rate:
+    sheet: "A1. Headline series"
+    column: 53
+    name: Real USD/GBP Exchange Rate
+    category: asset_price
+    frequency: annual
+    units: "1913=100, calendar year average"
+    publication_lag_days: 30
+    description: Real $/£ exchange rate, indexed 1913=100.
+
+  uk_nominal_eri:
+    sheet: "A1. Headline series"
+    column: 54
+    name: UK Nominal Effective Exchange Rate
+    category: asset_price
+    frequency: annual
+    units: "1913=100, calendar year average"
+    publication_lag_days: 30
+    description: Trade-weighted sterling index, nominal. BoE composite.
+
+  uk_real_eri:
+    sheet: "A1. Headline series"
+    column: 55
+    name: UK Real Effective Exchange Rate
+    category: asset_price
+    frequency: annual
+    units: "1913=100, calendar year average"
+    publication_lag_days: 30
+    description: Trade-weighted sterling index, real (CPI-deflated).
+
+  # -------- Real assets (category: real_asset) --------
+  uk_house_prices:
+    sheet: "A1. Headline series"
+    column: 56
+    name: UK House Price Index
+    category: real_asset
+    frequency: annual
+    units: "Jan 2015=100, calendar year average"
+    publication_lag_days: 90
+    description: |
+      BoE composite house price index. Uses building costs as rough proxy
+      pre-1895.
+
+  uk_agricultural_land:
+    sheet: "A32. Property prices & rent"
+    column: 28
+    name: UK Agricultural Land Price
+    category: real_asset
+    frequency: annual
+    units: "£000s per acre"
+    publication_lag_days: 365
+    description: |
+      Agricultural land price per acre, from A32 of the BoE workbook
+      (Vallis 1972 'Urban land and building prices 1892-1969' + ONS
+      extensions). Sparse pre-1892; a real-asset anchor through the
+      sterling-transition window.
+    notes: "Fetched from dedicated A32 sheet; A1 does not include land prices."
+
+  uk_oil_price_usd:
+    sheet: "A1. Headline series"
+    column: 38
+    name: Oil Price ($/barrel)
+    category: real_asset
+    frequency: annual
+    units: "$ per barrel"
+    publication_lag_days: 1
+    description: |
+      USD crude oil price, annual average. BoE uses this as the primary
+      commodity proxy in the headline sheet; used here as the broad-commodity
+      proxy for the UK transition window. Pre-1860s the series is sparse.
+
+  # -------- Macro (category: macro) --------
+  uk_real_gdp:
+    sheet: "A1. Headline series"
+    column: 1
+    name: Real UK GDP at Market Prices
+    category: macro
+    frequency: annual
+    units: "£mn, chained 2013 prices"
+    publication_lag_days: 90
+    description: Real UK GDP on a constant-border definition.
+
+  uk_real_gdp_growth:
+    sheet: "A1. Headline series"
+    column: 2
+    name: Real UK GDP Growth Rate
+    category: macro
+    frequency: annual
+    units: "%"
+    publication_lag_days: 90
+    description: Year-on-year growth in real UK GDP (market prices).
+
+  uk_nominal_gdp:
+    sheet: "A1. Headline series"
+    column: 22
+    name: Nominal UK GDP at Market Prices
+    category: macro
+    frequency: annual
+    units: "£mn"
+    publication_lag_days: 90
+    description: Nominal UK GDP, constant-border definition.
+
+  uk_unemployment_rate:
+    sheet: "A1. Headline series"
+    column: 27
+    name: UK Unemployment Rate
+    category: macro
+    frequency: annual
+    units: "%"
+    publication_lag_days: 30
+    description: |
+      LFS-consistent unemployment rate; rough GB estimates prior to 1855 per
+      BoE documentation.
+
+  uk_current_account_gdp:
+    sheet: "A1. Headline series"
+    column: 80
+    name: UK Current Account Balance (% GDP)
+    category: macro
+    frequency: annual
+    units: "% of nominal GDP"
+    publication_lag_days: 90
+    description: |
+      Current account balance / nominal GDP. Negative = deficit. Standard
+      external-balance metric for reserve-currency stress analysis.
+
+  uk_trade_deficit_gdp:
+    sheet: "A1. Headline series"
+    column: 78
+    name: UK Trade Deficit (% GDP)
+    category: macro
+    frequency: annual
+    units: "% of nominal GDP"
+    publication_lag_days: 90
+    description: Goods + services trade balance / nominal GDP.
+
+  # -------- Reserve status (category: reserve_status) --------
+  sterling_reserve_share:
+    sheet: "n/a"
+    column: -1
+    status: unavailable
+    name: Sterling Share of Global Central Bank Reserves
+    category: reserve_status
+    frequency: annual
+    units: "% of global reserves"
+    publication_lag_days: 365
+    description: |
+      NOT available in the BoE workbook. The headline reserve-currency-share
+      dataset the project needs (per the umbrella thesis) requires a separate
+      source. Candidates for a follow-up phase:
+        - Eichengreen & Flandreau (2009) 'The Rise and Fall of the Dollar';
+        - Schenk (2010) 'The Decline of Sterling' — appendix tables;
+        - IMF historical reserve-composition research notes.
+      None of these are re-fetchable via API; they require manual data extraction.
+    note: "Deferred to follow-up issue; documented here so future phases have the gap logged."
+
+  # -------- Gold price in GBP (category: real_asset) --------
+  gold_price_gbp:
+    sheet: "n/a"
+    column: -1
+    status: unavailable
+    name: Gold Price in GBP
+    category: real_asset
+    frequency: annual
+    units: "£ per troy oz"
+    publication_lag_days: 1
+    description: |
+      NOT included in the BoE 'Millennium of Macroeconomic Data' workbook.
+      A long-run £-denominated gold series is available from:
+        - Officer & Williamson (MeasuringWorth) historical gold series;
+        - Jastram (1977) 'The Golden Constant' tabulations;
+        - World Gold Council historical tables (post-1968 free market).
+      Gold price in USD (oil-style) is also absent from the workbook; for the
+      sterling-transition window, the pre-1914 classical gold standard means
+      gold/GBP was effectively fixed (£3 17s 10.5d per oz), so the series is
+      uninteresting until 1931 or 1971. Deferred to a follow-up phase.
+    note: "Deferred — requires non-BoE source for the post-1931 series."
