@@ -1,0 +1,17 @@
+{
+  "_comment": "Tracks last-run date for each review type. Updated by each review slash command on successful completion. A session-start check may warn when a category is overdue per its cadence target (see reviews/README.md).",
+  "cadence_targets_days": {
+    "adversarial": 90,
+    "dalio": 90,
+    "practitioner": 180,
+    "data-quality": 180,
+    "meta": 365
+  },
+  "last_run": {
+    "adversarial": null,
+    "dalio": null,
+    "practitioner": null,
+    "data-quality": null,
+    "meta": null
+  }
+}
