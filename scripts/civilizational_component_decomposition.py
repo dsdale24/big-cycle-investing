@@ -398,7 +398,7 @@ def _interpretation(
         "**Scale-principle caveat.** All numbers above are at the **cyclical** "
         "scale — US 1975-present equity drawdowns, ~50 years, a small number "
         "of independent recession/drawdown episodes. Per `specs/theses/README.md` "
-        "(scale principle) and `specs/theses/civilizational-leads-financial.md`, "
+        "(scale principle) and `specs/theses/changing-world-order/civilizational-leads-financial.md`, "
         "a test at one scale is silent on another. A null cyclical lead does "
         "**not** falsify the transition-scale claim that civilizational stress "
         "indicators lead structural shifts (printing-press / empire-decline "

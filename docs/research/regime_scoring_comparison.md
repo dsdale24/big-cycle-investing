@@ -32,7 +32,7 @@ disinflation episodes (1980s-2010s).
 
 Over 1980-01-01 -> 2024-12-31 (45.0y), the BigCycle variants posted Sharpes of 0.83 (binary), 0.84 (scored), and 0.39 (non-sovereign-heavy base). AllWeather came in at 0.96. Max drawdowns: -32.4% (binary), -31.3% (scored), -61.1% (non-sovereign), -22.9% (AllWeather). The non-sovereign drawdown gap to AllWeather is -38.1% (scored gap was -8.3%). Non-sovereign vs. scored on max DD: -29.8% (positive = shallower; negative = deeper).
 
-**Scale caveat:** 1980-2024 is cyclical/secular scale only. This backtest is silent on transition-scale claims per `specs/theses/backtest-sample-scope.md` — the US-ascendant, reserve-currency-intact period doesn't sample empire-decline or monetary-regime-transition dynamics. **AllWeather is not a neutral benchmark** per `specs/theses/bond-allocation.md`: its 40% long-bond core is itself a thesis, and the 1980-2024 disinflation tailwind favored bond-heavy allocations broadly. 'Beating AllWeather' is not the success criterion here; the question is whether reducing sovereign-liability exposure in the base changes cyclical behavior in thesis-consistent ways (specifically: inflationary decades).
+**Scale caveat:** 1980-2024 is cyclical/secular scale only. This backtest is silent on transition-scale claims per `specs/theses/changing-world-order/backtest-sample-scope.md` — the US-ascendant, reserve-currency-intact period doesn't sample empire-decline or monetary-regime-transition dynamics. **AllWeather is not a neutral benchmark** per `specs/theses/changing-world-order/bond-allocation.md`: its 40% long-bond core is itself a thesis, and the 1980-2024 disinflation tailwind favored bond-heavy allocations broadly. 'Beating AllWeather' is not the success criterion here; the question is whether reducing sovereign-liability exposure in the base changes cyclical behavior in thesis-consistent ways (specifically: inflationary decades).
 
 The honest read: this test isolates whether base-weight choice (not
 regime classifier sophistication) is the lever that drives the drawdown
@@ -57,4 +57,4 @@ or falsification at cyclical scale.
   non-sovereign-heavy base profile: 30% equities / 5% long bonds / 5%
   short bonds / 25% gold / 20% commodities / 15% cash (sovereign-
   liability share drops from 45% to 25%). See issue #50 and
-  `specs/theses/bond-allocation.md`.
+  `specs/theses/changing-world-order/bond-allocation.md`.

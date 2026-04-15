@@ -184,10 +184,10 @@ def main() -> int:
     caveat = (
         "**Scale caveat:** 1980-2024 is cyclical/secular scale only. "
         "This backtest is silent on transition-scale claims per "
-        "`specs/theses/backtest-sample-scope.md` — the US-ascendant, "
+        "`specs/theses/changing-world-order/backtest-sample-scope.md` — the US-ascendant, "
         "reserve-currency-intact period doesn't sample empire-decline or "
         "monetary-regime-transition dynamics. **AllWeather is not a neutral "
-        "benchmark** per `specs/theses/bond-allocation.md`: its 40% long-bond "
+        "benchmark** per `specs/theses/changing-world-order/bond-allocation.md`: its 40% long-bond "
         "core is itself a thesis, and the 1980-2024 disinflation tailwind "
         "favored bond-heavy allocations broadly. 'Beating AllWeather' is not "
         "the success criterion here; the question is whether reducing "
@@ -238,7 +238,7 @@ def main() -> int:
         "  non-sovereign-heavy base profile: 30% equities / 5% long bonds / 5%\n"
         "  short bonds / 25% gold / 20% commodities / 15% cash (sovereign-\n"
         "  liability share drops from 45% to 25%). See issue #50 and\n"
-        "  `specs/theses/bond-allocation.md`.\n"
+        "  `specs/theses/changing-world-order/bond-allocation.md`.\n"
     )
 
     out_path = ROOT / "docs" / "research" / "regime_scoring_comparison.md"

@@ -19,7 +19,8 @@ You are the reviewer who has read Dalio's corpus carefully — *Principles for D
 ## Dalio framework elements to check alignment on
 
 ### 1. The four-mode debt-cycle resolution
-- Austerity / restructuring / default / monetization. The project's `specs/theses/bond-allocation.md` names all four. Are strategy decisions consistently considering all four, or are some modes implicit-only?
+- Austerity / restructuring / default / monetization. The project's `specs/theses/changing-world-order/bond-allocation.md` names all four. Are strategy decisions consistently considering all four, or are some modes implicit-only?
+- See `specs/theses/changing-world-order/dalio-principles.md` for the project's catalog of specific Dalio specifications (books, sources, project uses and departures, 2022-2026 framework evolution) — you should read this to see what the project claims Dalio says, then verify against your own reading of the corpus.
 - Dalio's own ordering of likelihood and historical frequency — is the project's ordering consistent with his?
 
 ### 2. The three-scale taxonomy

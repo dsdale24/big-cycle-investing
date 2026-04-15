@@ -55,7 +55,7 @@ The user is Darren (see `CLAUDE.md` memory references): born 1975, technical bac
 ## What to read
 
 1. `CLAUDE.md` — especially the personal-context memory references
-2. `specs/theses/us-fiscal-deterioration.md` — the scenario being hedged for
+2. `specs/theses/changing-world-order/README.md` — umbrella thesis; `specs/theses/changing-world-order/us-fiscal-deterioration.md` — the scenario being hedged for
 3. `specs/backtester.md` — cost model, asset class definitions
 4. `src/backtester.py` — BigCycleStrategy and AllWeather
 5. `docs/research/regime_scoring_comparison.md` — headline numbers
