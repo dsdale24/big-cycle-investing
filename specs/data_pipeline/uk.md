@@ -57,7 +57,7 @@ The workbook is pre-cached at `data/raw/uk/_source/millennium_of_macro_data.xlsx
 
 ### Obtaining the workbook
 
-The coordinator (not the coding agent) is responsible for placing the workbook in the cache. Subagents do not have network access in this environment. The workbook can be downloaded from the BoE research-datasets page (curl with a standard browser user-agent succeeds where some automated tools fail; the coordinator's retrieval on 2026-04-15 used a browser-UA curl). The delegation prompt for implementation MUST state that the cache is pre-populated.
+The coordinator (not the coding agent) populates the cache. Download via BoE research-datasets page; operational details (curl user-agent, etc.) are out of scope for this spec. The delegation prompt for implementation MUST state that the cache is pre-populated.
 
 ## Series registry (`configs/series_uk.yaml`)
 
@@ -145,8 +145,8 @@ The pipeline MUST attempt to register these series (per the #52 Phase A issue de
 - Output parquet files MUST have a DatetimeIndex named `"date"` (consistent with US pipeline)
 - Output parquet files MUST be annual-frequency (one row per calendar year) for this phase
 - Fetching MUST be idempotent — re-running overwrites parquet files with fresh reads from the same workbook
-- No series MAY be fabricated, imputed, or forward-filled across missing years by the fetcher; downstream consumers (notebooks, backtester) handle that if they need it
-- Network access MUST NOT be attempted under any circumstance (this is a hard rule per the cache-only source model)
+- No series MAY be fabricated, imputed, or forward-filled across missing years by the fetcher
+- Network access MUST NOT be attempted under any circumstance (cache-only source model)
 
 ### Error behavior
 
@@ -174,35 +174,25 @@ def load_all_uk() -> dict[str, pd.DataFrame]
 
 ## Walk-forward availability
 
-Phase A annual data has large publication lags by the standards of cyclical backtesting — a 1975 annual CPI figure is typically published in early 1976. `publication_lag_days` in the registry SHOULD be set per-series:
-
-- BoE-reconstructed historical series (pre-1970): nominally 0 — the data is retrospective, not real-time. Note: walk-forward semantics treat this as "available at year-end of observation date," which is a simplification. The full walk-forward-correctness question is #72's concern.
-- Post-1970 series (where the workbook is ingesting contemporaneously-reported data): ~30-180 days depending on series. Estimate from published release calendars; document the source in the `description`.
-
-The walk-forward enforcement itself happens in the backtester (consistent with the US pipeline's split of concerns). This spec's responsibility is only to record the per-series lag metadata correctly.
+`publication_lag_days` in the registry is the per-series contract; walk-forward enforcement happens in the backtester (same split of concerns as the US pipeline). Set nominally 0 for BoE-reconstructed historical series (pre-1970, retrospective) and 30-180 days for contemporaneously-reported post-1970 series (estimate from published release calendars). See #72 for the US-side publication-lag bug this registry metadata enables fixing.
 
 ## Test cases (spec-anchored)
 
 The implementation MUST have `@pytest.mark.spec` tests covering:
 
-1. **Workbook-missing raises clearly.** Test with the cache path pointing at a non-existent file; assert the raised error's message references this spec's section and issue #52 — not a generic `FileNotFoundError`.
-2. **VERSION.txt missing raises.** Test with workbook present but `VERSION.txt` absent; assert error.
-3. **Unsupported version raises.** Test with `VERSION.txt` containing an unrecognized version string; assert error.
-4. **All registered `available` series have required fields.** YAML-schema test; registry loads without field-validation errors.
-5. **All `unavailable` series have `unavailable_reason` and `unavailable_followup_issue`.** YAML-schema test.
-6. **Output parquet has DatetimeIndex named "date".** Integration test requiring the workbook cache; loads one fetched parquet file; asserts index invariants.
-7. **Manifest captures per-series status truthfully.** Integration test; run full fetch; assert manifest's `available`/`unavailable`/error counts match the registry.
-8. **Per-series failure does not abort full fetch.** Unit test with a fixture or mock where one sheet read raises; assert other series still complete, failing series recorded in manifest.
-9. **No network access attempted.** Unit test with monkey-patched `urllib` / `requests` / `curl` — any network attempt raises in the test assertion.
+1. **Workbook-missing raises clearly.** Cache path pointing at non-existent file; raised error's message references this spec and issue #52, not a bare `FileNotFoundError`.
+2. **VERSION.txt missing or unsupported raises.** Parametrized: `VERSION.txt` absent, and `VERSION.txt` present with an unrecognized version string.
+3. **Registry field-completeness per schema.** All `available` series have `source_sheet`, `source_column`, `start_year`, `end_year`, `publication_lag_days`; all `unavailable` series have `unavailable_reason` and `unavailable_followup_issue`.
+4. **Output parquet has DatetimeIndex named `"date"`.** Integration test requiring the workbook cache.
+5. **Manifest captures per-series status truthfully.** Integration test; run full fetch; manifest's `available`/`unavailable`/error counts match the registry.
+6. **Per-series failure does not abort full fetch.** Mocked sheet-read failure; other series still complete; failing series recorded in manifest.
 
-Tests 1-5, 8, 9 are unit-markable (no cache required). Tests 6, 7 are `@pytest.mark.integration` (require the cached workbook).
+Tests 1-3, 6 are unit-markable. Tests 4-5 are `@pytest.mark.integration` (require the cached workbook).
 
 ## What this spec does NOT cover
 
-- **Monthly and sub-annual data.** Deferred to issue #94. Phase A is annual-only.
-- **Non-BoE UK data sources.** Sterling reserve share (#91), total-return equity (#92), gold-GBP post-1971 (#93). These will require new data-source sections, probably in follow-up sub-specs under this folder or additions to this spec.
-- **Multi-country harmonization.** Phase B (Dutch) and Phase C (JST panel) will have their own specs in this folder. Cross-country aggregation is Phase C's spec's concern, not this one.
-- **Multi-currency backtester integration.** The backtester currently assumes USD; extending to GBP, multi-currency returns, and common-currency conversion is deferred to Phase B's design (per #52).
-- **Data-quality validation beyond "fetch succeeded".** Value-range checks, splice-tracking-error checks, and cross-series sanity checks are follow-up work (see data-quality reviews and #72, #74).
-- **Vintage / revision tracking.** BoE's historical data is revised over time; this spec ingests current-revised-snapshot values. ALFRED-style vintage tracking is not supported (see #73 for the US-side analog).
-- **The analytical notebook and research note for Phase A.** Those are exploratory outputs and live on a separate `explore/` branch, not a stable pipeline spec — per the Workflow-section governance rule.
+- **Monthly and sub-annual data.** Deferred to #94.
+- **Non-BoE UK data sources.** Sterling reserve share (#91), total-return equity (#92), gold-GBP post-1971 (#93) — follow-up sub-specs or additions.
+- **Multi-currency backtester integration.** Deferred to Phase B's design.
+- **Data-quality validation beyond "fetch succeeded".** Value-range checks, splice-tracking-error, cross-series sanity — see #72, #74.
+- **Vintage / revision tracking.** This spec ingests current-revised-snapshot values; ALFRED-style vintage tracking is not supported (#73 tracks the US-side analog).
