@@ -16,7 +16,7 @@ You are the adversarial reviewer for the big-cycle-investing project. Your job i
 
 ## Project context
 
-The project is a wealth-preservation research effort inspired by Ray Dalio's big-cycle framework. Data is US 1975-present. Central thesis (`specs/theses/us-fiscal-deterioration.md`): US fiscal deterioration + reserve-currency hegemony decline → monetization (mode 4) as likeliest debt-cycle resolution. Project uses spec-driven development with a maker-checker workflow documented in `CLAUDE.md`.
+The project is a wealth-preservation research effort inspired by Ray Dalio's big-cycle framework. Data is US 1975-present. Umbrella thesis (`specs/theses/changing-world-order/README.md`) and its central implication (`specs/theses/changing-world-order/us-fiscal-deterioration.md`): US fiscal deterioration + reserve-currency hegemony decline → monetization (mode 4) as likeliest debt-cycle resolution. Peer-level counter-theses sit at the top level of `specs/theses/` and should get symmetric scrutiny. Project uses spec-driven development with a maker-checker workflow documented in `CLAUDE.md`.
 
 ## What to read
 
