@@ -21,6 +21,7 @@ Every thesis and every empirical test in this project applies at one or more **s
 | **Cyclical** | 3–10 years | Recessions, business cycles, quarterly sentiment swings | Extensive: US 1975-present |
 | **Secular** | 10–40 years | Disinflation/inflation regimes, credit cycles, demographic shifts | Partial: US 1975-present covers ~1.5 secular regimes |
 | **Transition** | 50–200 years | Reserve-currency shifts, empire transitions, printing-press-class institutional upheaval | **None in-dataset.** Requires cross-national historical data (see `backtest-sample-scope.md`). |
+| **Meta** | N/A | Claims about what other theses can be tested with; statements about the dataset itself rather than about the world | N/A — these are structural, not empirical |
 
 **A test at one scale is silent on another.** A signal that lags cyclical drawdowns can still be a valid leading indicator for secular or transition-scale shifts — the mechanisms are different (sentiment reacts to earnings; Gini decays over decades). Stating "the composite is a lagging indicator" without scale qualification conflates these and leads to wrong conclusions.
 
@@ -49,9 +50,41 @@ The body of each thesis is more important than the status label. A one-word stat
 
 ## Adding a thesis
 
-1. New file `specs/theses/<short-kebab-name>.md` with the schema: name, status, scale, claim, rationale, test plan, current evidence, implications, falsification criteria.
+1. New file `specs/theses/<short-kebab-name>.md` with the schema below. Section headers match the existing thesis files — keep them consistent so cross-referencing stays reliable.
 2. Add one line to the index above.
 3. On any PR that tests, confirms, or falsifies a thesis, update the thesis file and the index row. The `review-pr` agent can flag PRs that implicate theses.
+
+### Thesis file schema
+
+Every thesis file in this directory uses the same section ordering:
+
+```markdown
+# <Thesis title>
+
+**Status:** <status vocabulary term>
+**Scale:** <cyclical | secular | transition | meta, with qualifiers>
+
+## Claim
+One-to-three-sentence statement of the thesis.
+
+## Rationale
+Why we hold it — evidence, reasoning, framing.
+
+## Implications
+What this claim shapes in the project (asset choices, data acquisition, benchmarks, signal interpretation).
+
+## Current evidence
+Dated log entries citing specific research artifacts (PRs, `docs/research/*.md` files, commits). Don't overwrite prior entries — build the evidence log. Note which scale each entry addresses.
+
+## What would test this
+Concrete tests that would bear on the thesis, at what scale, with what data requirements.
+
+## What would falsify this
+Specific findings that would contradict the claim at a relevant scale. This is the discipline that keeps theses honest.
+
+## Related
+Cross-references to other thesis files whose claims interact with this one.
+```
 
 ## Adding evidence to an existing thesis
 
