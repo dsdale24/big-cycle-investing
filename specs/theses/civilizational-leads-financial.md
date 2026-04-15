@@ -35,10 +35,28 @@ The cyclical-scale result is a useful descriptive fact (it constrains what the c
 
 **Component behavior might matter:** the composite mixes slow-moving (Gini, annual, reflects institutional structure over years) and fast-reacting (EPU, sentiment, monthly, reflects news-driven mood) signals. The averaged composite's lagging character may be driven by the fast components; a Gini-only or inequality-only signal might behave differently. Not tested yet.
 
+**Tested at cyclical scale (2026-04-15, PR #53 / issue #49, `docs/research/civilizational_component_decomposition.md`):**
+
+The component-decomposition diagnostic ran the same lead-lag analysis (k ∈ {−24, −12, −6, −3, 0, +3, +6, +12, +24}) and per-episode table separately on each of the 3 single components and the 3 pairwise composites. Headline:
+
+| Series | k at peak |corr| | Peak corr |
+|---|---|---|
+| Gini (z, pub-lag-shifted) | +6 | +0.066 |
+| EPU (z) | +3 | −0.190 |
+| Sentiment inverted (z) | +3 | −0.146 |
+| Gini + EPU | +3 | −0.155 |
+| Gini + sentiment | +3 | −0.118 |
+| EPU + sentiment | +3 | −0.198 |
+
+**All 6 series lag at cyclical scale.** No component or pairwise composite shows peak correlation at negative k. The "fast components mask a leading Gini" hypothesis is not supported — Gini doesn't lead either. Refining: Gini is essentially noise on this sample (peak +0.066 ≈ zero); the composite's lagging signal traces to EPU and sentiment.
+
+**What this changes about the thesis.** Nothing at the transition scale (where the thesis lives). The cyclical-scale null on Gini is consistent with the thesis: slow institutional decay shouldn't track quarterly equity moves, and the right test is whether Gini's secular trend (decade-over-decade level) precedes structural shifts — a different methodology than lead-lag correlation. Implication for downstream work: a Gini-only quarterly signal in BigCycleStrategy would be wrong by construction; any future use of Gini in strategy code should be at secular timescale (e.g., 36m-smoothed level, decade-over-decade change), not as a quarterly tilt. See follow-up issue #51 (Path B / secular tilt) for the right framing.
+
 ## What would test this
 
 - **Cyclical (done, composite lags):** Already addressed. Result doesn't bear on the core claim.
-- **Component decomposition:** Rerun the lead-lag analysis separately on each component (Gini alone, EPU alone, inverted sentiment alone). Slow-moving components may lead even if the averaged composite lags. Cheap follow-up.
+- **Component decomposition:** ~~Rerun the lead-lag analysis separately on each component (Gini alone, EPU alone, inverted sentiment alone). Slow-moving components may lead even if the averaged composite lags.~~ **Done 2026-04-15 (PR #53 / issue #49)** — no component leads at cyclical scale; Gini is noise (peak +0.066), composite lag traces to EPU+sentiment. See evidence log.
+- **Secular Gini signature (untested):** Within the dataset, does Gini's *level* (not z-score, not lead-lag correlation) show decade-over-decade rises preceding equity regime shifts? Different methodology — secular-trend analysis rather than cyclical correlation. Tracked in issue #51 (Path B framing).
 - **Transition:** Does the composite (or components) rise before transition events in cross-national data — UK pre-1914, sterling declines, Weimar pre-1923, Dutch Republic 1700-1800? Requires `backtest-sample-scope.md` data.
 - **Secular signatures:** Within the dataset, does the composite show rising trends during the 2000s-2010s that preceded the (ongoing) questioning of US reserve status? Hard to evaluate empirically because there's no endpoint yet — the transition is still in progress or not.
 
