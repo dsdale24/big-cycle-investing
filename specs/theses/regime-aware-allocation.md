@@ -34,6 +34,17 @@ Both BigCycle variants underperform AllWeather on every metric, most notably dra
 3. BigCycle's base allocation is ~35% sovereign-liability (bonds + cash), which is heavy relative to what `bond-allocation.md` implies. The base weights may be the real driver of drawdown underperformance, not the classifier nuances.
 4. Cyclical-scale testing is silent on whether regime awareness helps at transition scale — the primary project goal.
 
+**Follow-up at cyclical scale (2026-04-15, PR #56 / issue #50, `docs/research/regime_scoring_comparison.md`):**
+
+Tested the "caveat #3" hypothesis — that base weights (not regime logic) drive the weak result — by adding a `non_sovereign_heavy` base profile (25% sovereign-liability vs 45%) with identical regime logic. Result: the lighter-sovereign base performs *worse* on aggregate (Sharpe 0.39 vs 0.84; max DD −61% vs −31%). See `bond-allocation.md` for full numbers.
+
+**What this means for regime-aware-allocation:**
+- Rules out the narrow version of caveat #3 — swapping sovereign for a static real-asset base does not rescue the regime-aware strategy's underperformance vs AllWeather. The issue is NOT simply "BigCycle has too many bonds."
+- Consistent with caveat #2 (signals may be wrong) AND caveat #1 (regime favored AllWeather). Both remain live — this test doesn't discriminate between them.
+- Status stays `tested` (cyclical scale, weak). No status change: the regime-aware thesis wasn't directly challenged, just the "base weights are the confound" escape hatch.
+
+**Next discriminating test for caveat #1 vs #2:** a regime-aware strategy that (a) uses *different* regime signals (credit spreads, debt acceleration, money supply) and (b) applies regime-conditional real-asset tilts (not baseline). If that still trails AllWeather on 1980-2024, the cyclical-scale case for regime-aware weakens further. If it wins, caveat #2 (wrong signals) was the lever.
+
 ## What would test this more fully
 
 - **Cyclical, better instance:** A version of regime-aware with (a) lower sovereign-liability base weights and (b) regime signals drawn from a broader indicator set (credit spreads, money supply growth, debt acceleration) rather than just three. If this version beats AllWeather, the thesis is supported for cyclical scale; if not, the thesis is weakened.
