@@ -17,11 +17,29 @@ A review is not a living document. Once written, it's frozen. Aging reveals whet
 | dalio | Big-cycle framework alignment; what's missing from Dalio's taxonomy | Quarterly | `.claude/agents/review-dalio.md` |
 | practitioner | "If I put money in this today, what would actually happen?" | Before strategy → `settled` | `.claude/agents/review-practitioner.md` |
 | data-quality | Measurement soundness, unaudited approximations | After significant splicing / indicator work | `.claude/agents/review-data-quality.md` |
-| meta | Evolution across prior reviews; repeated concerns vs. addressed | Annually, or after 3+ reviews | `.claude/agents/review-meta.md` |
+| meta | Evolution across prior reviews; repeated concerns vs. addressed | Annually or after 3+ reviews accumulated | `.claude/agents/review-meta.md` |
 
 Slash commands invoke each agent: `/review-adversarial`, `/review-dalio`, `/review-practitioner`, `/review-data-quality`, `/review-meta`.
 
+An umbrella command `/review-cycle` runs the four project-level reviewers in parallel, then meta sequentially. Flags: `--all` (ignore cadence, run all four) and `--ephemeral` (draft mode, see below).
+
 Cadence is not enforced by automation. It's tracked in `.claude/review-state.json`; a session-start check may surface a reminder if a category is overdue. A review done because cron fired it has no teeth; the reminder is the automation lever.
+
+## Ephemeral mode (for rapid development)
+
+During active development, quarterly cadence is too infrequent — but saving every pulse-check adds noise to the series and pollutes the meta-reviewer's signal. Ephemeral mode is the answer.
+
+Every review command accepts `--ephemeral`:
+
+- Output goes to `reviews/.ephemeral/<type>/YYYY-MM-DD-<type>.md` (meta) or `reviews/.ephemeral/YYYY-MM-DD-<type>.md` (project-level). The directory is gitignored.
+- `.claude/review-state.json` is NOT updated (ephemeral runs don't count toward cadence).
+- `reviews/README.md` is NOT updated (ephemeral runs are not part of the series).
+- No commit flow is offered.
+- The meta reviewer explicitly skips `reviews/.ephemeral/` when reading the series.
+
+To promote an ephemeral review to the saved record: move the file from `reviews/.ephemeral/` to `reviews/` (or `reviews/meta/`), then either (a) manually update `.claude/review-state.json` and this README index, or (b) re-run the corresponding command without `--ephemeral`, which will overwrite and update state.
+
+**Guidance:** use ephemeral for pulse-checks mid-session; use saved for milestone moments (a new thesis captured, a major finding landed, a quarter elapsed). The series is only as informative as the care taken in deciding what gets into it.
 
 ## File naming
 

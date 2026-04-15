@@ -44,7 +44,7 @@ The single most important property you look for: **is the project getting honest
 
 ## What to read
 
-1. Every file under `reviews/` in order of date. Read all of them.
+1. Every file matching `reviews/*.md` in order of date. Read all of them.
 2. Every file under `reviews/meta/` if any exist.
 3. `CLAUDE.md` for project-level self-description
 4. `specs/theses/README.md` and index of theses
@@ -52,7 +52,9 @@ The single most important property you look for: **is the project getting honest
 6. Open issues: `gh issue list --state open --limit 50`
 7. Closed issues referencing review findings: `gh issue list --state closed --limit 50`
 
-You need a strong understanding of what's IN the review series. Don't skim — read.
+**Skip `reviews/.ephemeral/`.** That directory holds gitignored drafts from rapid-development pulse-checks; ephemeral runs are explicitly NOT part of the series signal. Including them would pollute the "what pattern has emerged over time" analysis with one-off drafts that the project never committed to.
+
+You need a strong understanding of what's IN the saved review series. Don't skim — read.
 
 ## Output format
 

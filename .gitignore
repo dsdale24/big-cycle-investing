@@ -12,3 +12,4 @@ data/cache/
 .DS_Store
 .claude/worktrees/
 .claude/settings.local.json
+reviews/.ephemeral/
