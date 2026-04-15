@@ -1,0 +1,294 @@
+# UK series registry (Phase A of issue #52)
+#
+# Source: Bank of England "A Millennium of Macroeconomic Data" workbook, v3.1
+# Governed by specs/data_pipeline/uk.md — read that spec before editing this file.
+#
+# Schema (spec §"Schema"):
+#   name, category, frequency, description  (required for all)
+#   source_sheet, source_column, source_header_row, source_year_start_row,
+#   start_year, end_year, publication_lag_days  (required iff status == available)
+#   unavailable_reason, unavailable_followup_issue  (required iff status == unavailable)
+#   splice  (optional)
+#
+# Invariants (spec §"Invariants"):
+#   - Every `available` series has source_sheet, source_column, start_year,
+#     end_year, publication_lag_days.
+#   - Every `unavailable` series has unavailable_reason and unavailable_followup_issue.
+#   - source_sheet values match an actual sheet name in the pinned workbook.
+#   - frequency is annual for Phase A (monthly deferred to #94).
+#
+# Column-identification convention for A1 "Headline series":
+#   Columns are identified by the Description row (row index 3, 0-based) plus the
+#   Units row (row index 5) to disambiguate where Description is shared across
+#   merged-header columns (e.g., Bank Rate end-period vs year-average).
+#   Year column is col 0; data starts at row 7 (1086).
+#
+# Column-identification convention for A32 "Property prices & rent":
+#   Columns are identified by the Description row (row index 2).
+#   Year column is col 0; data starts at row 4 (1845).
+
+uk:
+  # --- Fiscal ---
+  uk_public_debt_gdp:
+    name: UK Public Sector Debt (% GDP)
+    category: fiscal
+    frequency: annual
+    source_sheet: "A1. Headline series"
+    source_column: "UK Public sector debt"
+    source_column_units: "as a % of nominal GDP: measure 1"
+    source_header_row: 3
+    source_units_row: 5
+    source_year_start_row: 7
+    start_year: 1700
+    end_year: 2016
+    publication_lag_days: 0
+    description: UK public sector debt as % of nominal GDP (measure 1, GB+Ireland pre-1920).
+    status: available
+
+  uk_public_deficit_gdp:
+    name: UK Public Sector Net Borrowing (% GDP)
+    category: fiscal
+    frequency: annual
+    source_sheet: "A1. Headline series"
+    source_column: "Public Sector Net Lending(+)/Borrowing(-)"
+    source_column_units: "as a % of nominal GDP"
+    source_header_row: 3
+    source_units_row: 5
+    source_year_start_row: 7
+    start_year: 1700
+    end_year: 2016
+    publication_lag_days: 0
+    description: Public sector net lending (positive) or borrowing (negative) as % GDP. Central government only before 1900. Sign convention follows BoE headline (positive = surplus); a positive value is a surplus, negative a deficit.
+    status: available
+
+  uk_public_receipts_gdp:
+    name: UK Public Sector Total Receipts (% GDP)
+    category: fiscal
+    frequency: annual
+    source_sheet: "A1. Headline series"
+    source_column: "Public Sector Total Receipts"
+    source_column_units: "as a % of nominal GDP"
+    source_header_row: 3
+    source_units_row: 5
+    source_year_start_row: 7
+    start_year: 1900
+    end_year: 2016
+    publication_lag_days: 0
+    description: Public sector total receipts (tax + other revenue) as % of nominal GDP.
+    status: available
+
+  # --- Monetary ---
+  uk_bank_rate:
+    name: UK Bank Rate (year-end)
+    category: monetary
+    frequency: annual
+    source_sheet: "A1. Headline series"
+    source_column: "Bank Rate"
+    source_column_units: "% end period"
+    source_header_row: 3
+    source_units_row: 5
+    source_year_start_row: 7
+    start_year: 1694
+    end_year: 2016
+    publication_lag_days: 0
+    description: Bank of England official policy rate, end of period.
+    status: available
+
+  uk_cpi_inflation:
+    name: UK Consumer Price Inflation
+    category: monetary
+    frequency: annual
+    source_sheet: "A1. Headline series"
+    source_column: "Consumer price inflation"
+    source_column_units: "%"
+    source_header_row: 3
+    source_units_row: 5
+    source_year_start_row: 7
+    start_year: 1210
+    end_year: 2016
+    publication_lag_days: 0
+    description: UK consumer price inflation (year-on-year, %). BoE-curated long series combining historical cost-of-living indices with modern CPI.
+    status: available
+
+  uk_broad_money:
+    name: UK Broad Money (stock)
+    category: monetary
+    frequency: annual
+    source_sheet: "A1. Headline series"
+    source_column: "Broad Money "
+    source_column_units: "Year end, £mn"
+    source_header_row: 3
+    source_units_row: 5
+    source_year_start_row: 7
+    start_year: 1870
+    end_year: 2016
+    publication_lag_days: 0
+    description: Spliced break-adjusted broad money measure based on M3/M4/M4x (£mn, year-end).
+    splice: "M3/M4/M4x spliced by BoE; see A24 Money sheet for component detail"
+    status: available
+
+  # --- Rates ---
+  uk_10yr_gilt:
+    name: UK 10-Year Gilt Yield
+    category: rates
+    frequency: annual
+    source_sheet: "A1. Headline series"
+    source_column: "10 year/medium-term government bond yields"
+    source_column_units: "%, calendar year average"
+    source_header_row: 3
+    source_units_row: 5
+    source_year_start_row: 7
+    start_year: 1753
+    end_year: 2016
+    publication_lag_days: 0
+    description: 10-year / medium-term government bond yield, calendar-year average. BoE long-series splice of Consols-era and modern-gilt yields.
+    splice: "Consols-based pre-1929, medium-term gilt yields post-1929 per BoE"
+    status: available
+
+  uk_short_rate:
+    name: UK Short Rate (Bank Rate annual average)
+    category: rates
+    frequency: annual
+    source_sheet: "A1. Headline series"
+    source_column: "Bank Rate"
+    source_column_units: "%, calendar year average"
+    source_header_row: 3
+    source_units_row: 5
+    source_year_start_row: 7
+    start_year: 1694
+    end_year: 2016
+    publication_lag_days: 0
+    description: Short-rate proxy using Bank Rate calendar-year average. No separate long historical T-bill series in A1; Bank Rate is the BoE-provided short-rate proxy.
+    status: available
+
+  # --- Financial assets ---
+  uk_share_prices:
+    name: UK Share Price Index
+    category: asset_price
+    frequency: annual
+    source_sheet: "A1. Headline series"
+    source_column: "Share prices"
+    source_column_units: "April 1962=100, Year end"
+    source_header_row: 3
+    source_units_row: 5
+    source_year_start_row: 7
+    start_year: 1700
+    end_year: 2016
+    publication_lag_days: 0
+    description: UK equity share price index, year-end, April 1962 = 100. Price-only (not total return); see #92 for total-return follow-up.
+    status: available
+
+  uk_gold_gbp:
+    name: UK Gold Price in GBP (post-1971)
+    category: asset_price
+    frequency: annual
+    status: unavailable
+    unavailable_reason: Gold-GBP price post-1971 (post-Bretton-Woods) is not included in BoE v3.1 headline annual series. Pre-1971 gold was effectively fixed via sterling's gold peg and can be inferred from exchange rates; post-1971 requires a non-BoE source (LBMA or World Gold Council).
+    unavailable_followup_issue: 93
+    description: Gold price in GBP — required for a floating-rate real-asset benchmark post-1971. Expected-unavailable per issue #93.
+
+  uk_gbp_usd:
+    name: GBP/USD Exchange Rate
+    category: asset_price
+    frequency: annual
+    source_sheet: "A1. Headline series"
+    source_column: "$/£ exchange rate"
+    source_column_units: "Calendar year average"
+    source_header_row: 3
+    source_units_row: 5
+    source_year_start_row: 7
+    start_year: 1791
+    end_year: 2016
+    publication_lag_days: 0
+    description: Sterling/USD exchange rate (USD per GBP), calendar-year average.
+    status: available
+
+  # --- Real assets ---
+  uk_agricultural_land:
+    name: UK Agricultural Land Price
+    category: real_asset
+    frequency: annual
+    source_sheet: "A32. Property prices & rent"
+    source_column: "Agricultural land (£000s per acre)"
+    source_header_row: 2
+    source_year_start_row: 4
+    start_year: 1892
+    end_year: 1969
+    publication_lag_days: 0
+    description: UK agricultural land price in £000s per acre, from Vallis (1972). Series ends in 1969; post-1969 land prices would require a non-BoE source.
+    status: available
+
+  uk_commodity_index:
+    name: UK Wholesale / Producer Price Index
+    category: real_asset
+    frequency: annual
+    source_sheet: "A1. Headline series"
+    source_column: "Wholesale/producer price index"
+    source_column_units: "2010=100"
+    source_header_row: 3
+    source_units_row: 5
+    source_year_start_row: 7
+    start_year: 1700
+    end_year: 2016
+    publication_lag_days: 0
+    description: UK wholesale / producer price index (2010=100) used as the commodity-price-level proxy per the spec's "UK commodity price index" target. A1 has no separate CRB-style commodities composite; WPI is the BoE-provided long series closest in intent.
+    status: available
+
+  # --- Macro ---
+  uk_real_gdp_growth:
+    name: UK Real GDP Growth
+    category: macro
+    frequency: annual
+    source_sheet: "A1. Headline series"
+    source_column: "Real UK GDP at market prices, geographically-consistent estimate based on post-1922 borders"
+    source_column_units: "growth rate"
+    source_header_row: 3
+    source_units_row: 5
+    source_year_start_row: 7
+    start_year: 1701
+    end_year: 2016
+    publication_lag_days: 0
+    description: Annual growth rate of real UK GDP at market prices, geographically-consistent post-1922-border estimate.
+    status: available
+
+  uk_unemployment_rate:
+    name: UK Unemployment Rate
+    category: macro
+    frequency: annual
+    source_sheet: "A1. Headline series"
+    source_column: "Unemployment rate"
+    source_column_units: "%"
+    source_header_row: 3
+    source_units_row: 5
+    source_year_start_row: 7
+    start_year: 1760
+    end_year: 2016
+    publication_lag_days: 0
+    description: LFS-consistent unemployment rate; rough GB estimates prior to 1855.
+    status: available
+
+  uk_current_account_gdp:
+    name: UK Current Account (% GDP)
+    category: macro
+    frequency: annual
+    source_sheet: "A1. Headline series"
+    source_column: "Current account "
+    source_column_units: "as a % of nominal GDP"
+    source_header_row: 3
+    source_units_row: 5
+    source_year_start_row: 7
+    start_year: 1772
+    end_year: 2016
+    publication_lag_days: 0
+    description: Current account balance as % of nominal GDP. GB only before 1816.
+    status: available
+
+  # --- Reserve status ---
+  uk_sterling_reserve_share:
+    name: Sterling Share of Global FX Reserves
+    category: reserve_status
+    frequency: annual
+    status: unavailable
+    unavailable_reason: Sterling's share of global foreign-exchange reserves is not a BoE series. Requires IMF COFER (1999+) and academic reconstructions (Eichengreen, Chitu, Mehl) for pre-1999 coverage — out of scope for a BoE-only Phase A pipeline.
+    unavailable_followup_issue: 91
+    description: Sterling share of global official FX reserves — the central transition variable in the sterling→USD reserve-currency shift. Expected-unavailable per issue #91.

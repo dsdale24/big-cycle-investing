@@ -50,7 +50,7 @@ The project depends on a data pipeline that splices multiple sources across deca
 
 1. `CLAUDE.md` — data-quality expectations
 2. `specs/backtester.md` — splicing sections, approximation sections, data quality section
-3. `specs/data_pipeline.md` (if it exists)
+3. `specs/data_pipeline/us.md` (US baseline) and any country-specific specs in `specs/data_pipeline/` that the PR touches (e.g., `specs/data_pipeline/uk.md` for UK work)
 4. `src/data_fetcher.py` — how data is loaded
 5. `src/indicators.py` — how indicators are computed; where proxy data enters
 6. `docs/research/bond_return_validation.md` — one known-good validation
