@@ -70,6 +70,22 @@ If the PR modifies a spec:
 - If loosening, is there justification in the PR or commit message?
 - If the PR modifies implementation and ALSO tightens the spec to match (rather than loosening the spec to accept the implementation), that's the healthy direction. Flag the inverse.
 
+### 6. CLAUDE.md discoverability (first-class concepts only)
+
+Some PRs introduce a new "first-class concept" — a new paradigm, directory-level artifact, workflow, or project-level vocabulary term that future sessions will need to know about. For these, CLAUDE.md must be updated in the same PR so the concept is discoverable at session start. CLAUDE.md functions as the session-start specification for how this project operates; a first-class concept that ships without being reflected there is **specification rot** — the project's own spec of itself drifts from reality the moment the PR merges.
+
+**Trigger conditions — check this section when the PR appears to introduce a first-class concept. Trigger indicators:**
+
+- Adds a directory with a distinct purpose — whether top-level (e.g., `reviews/`) or a subdirectory serving a new conceptual role (e.g., `specs/theses/` introduced the "theses" concept under `specs/`)
+- Adds a new category of subagent or slash command (not just one more of an existing category)
+- Introduces a new project-level vocabulary term that other files will reference (e.g., "ephemeral mode", "scale principle", "maker-checker")
+- Changes the workflow surface a session-start coordinator uses (new state files to check, new cadences to respect, new slash-command entry points)
+- Adds a new paradigm that complements but differs from the existing paradigms documented in CLAUDE.md (spec-driven development, maker-checker, theses, reviews)
+
+**The test:** "If a new session opened tomorrow with only CLAUDE.md as context, would they discover this new concept and know how to use it?" If no → **Major finding**. Block-worthy. Discoverability is a pre-merge requirement for first-class concepts, not a post-merge cleanup.
+
+Use judgment on edge cases. A PR that "just adds one more reviewer type" technically extends an existing paradigm, but if the new reviewer introduces novel conventions a future coordinator would need to know, it's still first-class. A nit-only or pure-refactor PR is almost never first-class. When unsure, apply the new-session test literally — if the simulated session wouldn't find the concept, it's first-class and CLAUDE.md needs an update.
+
 ## Effort budget
 
 Roughly 10-15 tool calls. If you exceed 25 without a clear verdict, STOP and report what is taking longer than expected. Do NOT modify any files. Do NOT push or merge. Do NOT run the tests unless necessary to verify a specific claim — and if you do, report it (running tests is the coordinator's job, not yours).
