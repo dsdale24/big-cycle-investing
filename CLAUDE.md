@@ -107,8 +107,9 @@ you're about to stabilize, write the spec BEFORE the refactor.
   prefix is `stable/`, the spec MUST exist before the implementation delegation
   (not written concurrently). The coordinator's first commit on a `stable/`
   branch MUST be the spec; implementation delegations follow. This is enforced
-  by the file-type rule in the Workflow section — tests or `src/` code in a
-  delegation prompt mean `stable/` and spec-first, no exceptions.
+  by the file-type rule in the Workflow section — tests, `src/` code, or
+  `configs/` changes in a delegation prompt mean `stable/` and spec-first, no
+  exceptions.
 
 ### Theses inform specs
 
