@@ -34,6 +34,14 @@ SHORT_BONDS_ETF = "SHY"
 # See specs/backtester.md → Data quality.
 APPROXIMATION_SOURCES: frozenset[str] = frozenset({"^TNX", "GS2_yield"})
 
+# Sentinel source label for days where an asset has no segment coverage at all
+# (e.g., short_bonds before the GS2/SHY window when running with a data dict
+# that lacks a GS2_yield daily series). The day is zero-filled per the spec's
+# "Asset returns → Invariants" clause allowing 0-fill for assets with no proxy,
+# and this label keeps the source frame free of NaN so downstream predicates
+# (`approximation_exposure`, membership tests) can match against a known set.
+ZERO_FILL_SOURCE = "zero_fill"
+
 
 # ---------------------------------------------------------------------------
 # Transaction cost schedule (see specs/backtester.md, issue #6)
@@ -435,17 +443,11 @@ def build_asset_returns(
 
     returns = returns.loc[start_dt:]
 
-    # Zero-fill only assets with no proxy coverage (bonds/cash edge cases).
-    # Gold and commodities have spec-mandated proxy coverage from 1975 onward;
-    # any NaN there is a real gap and must surface, not be silently filled.
-    # See specs/backtester.md "Asset returns → Invariants".
-    PROXIED_ASSETS = {"gold", "commodities"}
-    non_proxied_cols = [c for c in returns.columns if c not in PROXIED_ASSETS]
-    returns[non_proxied_cols] = returns[non_proxied_cols].fillna(0)
-
-    if not return_sources:
-        return returns
-
+    # Assemble source labels before deciding how to fill return NaN cells —
+    # the two frames must stay consistent (see specs/backtester.md
+    # "Proxy series splicing → Invariants" and "ETF splicing → Invariants
+    # (bond splicing)": "Source labels must be populated on every business day
+    # the returns frame is populated on").
     sources = pd.DataFrame({
         "equities": "^GSPC",
         "long_bonds": long_bond_src,
@@ -454,6 +456,44 @@ def build_asset_returns(
         "commodities": comm_src,
         "cash": "FEDFUNDS",
     }, index=returns.index)
+
+    # Extend source-label coverage to every business day in the returns frame.
+    # Two failure modes this addresses (issues #41, #42):
+    #   * Holidays introduced into the returns index via ``FEDFUNDS.resample("B")``
+    #     aren't in ``^GSPC`` / ``^TNX`` / proxy-segment indices, so they'd be
+    #     NaN in both returns and sources without post-processing.
+    #   * ``.diff()`` / ``pct_change()`` leave the first day of each segment NaN;
+    #     the day belongs to the segment's source, the return is just undefined
+    #     for that day (treated as 0).
+    # Within an asset's segment-coverage window (first-to-last date any segment
+    # had data), forward-fill the source label so every day carries the label of
+    # the segment currently in force. Outside that window (e.g., short_bonds
+    # pre-GS2_yield when the daily yield series wasn't supplied), use the
+    # ``ZERO_FILL_SOURCE`` sentinel rather than NaN so downstream predicates can
+    # match against a known vocabulary.
+    for asset in ("long_bonds", "short_bonds", "gold", "commodities"):
+        col = sources[asset]
+        valid = col.dropna()
+        if valid.empty:
+            sources[asset] = ZERO_FILL_SOURCE
+            continue
+        first = valid.index[0]
+        in_coverage = sources.index >= first
+        sources.loc[in_coverage, asset] = sources.loc[in_coverage, asset].ffill()
+        sources.loc[~in_coverage, asset] = ZERO_FILL_SOURCE
+
+    # Every day in the returns frame now has a source label. Zero-fill any
+    # remaining return NaN cells — they correspond to (a) holidays where the
+    # market was closed and zero is the correct neutral return (spec's
+    # "Asset returns → Edge cases" explicitly allows holidays to carry 0), or
+    # (b) the first day of a segment where ``.diff()`` / ``pct_change()`` is
+    # mathematically undefined. Both cases are labelled with the surrounding
+    # segment's source via the loop above, preserving the invariant that a
+    # zero-return day inside a proxy window is still attributed to the proxy.
+    returns = returns.fillna(0)
+
+    if not return_sources:
+        return returns
 
     return returns, sources
 
