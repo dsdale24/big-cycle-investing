@@ -235,14 +235,15 @@ def test_unit_tnx_day_one_diff_nan_gets_tnx_source_label():
 
 @pytest.mark.unit
 @pytest.mark.spec
-def test_unit_short_bonds_with_no_gs2_yield_uses_zero_fill_label():
-    """When the data dict does not supply ``GS2_yield`` (the duration-
-    approximation segment), short_bonds has no pre-SHY segment at all. Every
-    pre-SHY day is zero-filled for returns and labelled with the
-    ``ZERO_FILL_SOURCE`` sentinel so downstream predicates see a known
-    vocabulary instead of NaN. This is the exact production configuration of
-    ``{**load_all_fred(), **load_all_yahoo()}`` today (``GS2_yield`` is
-    constructed by ``validate_bond_returns.py``, not by the cache loaders).
+def test_unit_short_bonds_with_no_gs2_at_all_uses_zero_fill_label():
+    """When the data dict supplies neither ``GS2_yield`` NOR raw monthly
+    ``GS2``, short_bonds has no pre-SHY segment at all. Every pre-SHY day
+    is zero-filled for returns and labelled with the ``ZERO_FILL_SOURCE``
+    sentinel so downstream predicates see a known vocabulary instead of
+    NaN. (Prior to issue #43 this was the actual production configuration
+    because no loader constructed ``GS2_yield`` from the raw monthly
+    ``GS2``; the fix now falls back to deriving the daily series from
+    ``GS2`` when present. This test pins the genuine no-data path.)
     """
     nyse_idx = _business_days("1975-01-02", "2005-12-31")
     sp500 = _price_df(nyse_idx, 70.0, seed=1)
@@ -261,7 +262,7 @@ def test_unit_short_bonds_with_no_gs2_yield_uses_zero_fill_label():
     data = {
         "^GSPC": sp500,
         "^TNX": tnx,
-        # No "GS2_yield" — matches load_all_fred() behavior.
+        # No "GS2_yield" AND no raw "GS2" — neither segment source available.
         "FEDFUNDS": fed,
         LONG_BONDS_ETF: tlt,
         SHORT_BONDS_ETF: shy,
@@ -286,3 +287,179 @@ def test_unit_short_bonds_with_no_gs2_yield_uses_zero_fill_label():
     # No NaN anywhere.
     assert not returns.isna().any().any()
     assert not sources.isna().any().any()
+
+
+# ---------------------------------------------------------------------------
+# Issue #43: short_bonds duration approximation must run in production
+# ---------------------------------------------------------------------------
+
+@pytest.mark.integration
+def test_real_short_bonds_pre_2002_uses_gs2_yield_source(require_cache):
+    """specs/backtester.md → ETF splicing (bond splicing): the duration
+    approximation runs for short_bonds pre-2002-07-30, then SHY takes over.
+
+    Regression test for issue #43: the production data dict (just
+    ``load_all_fred()`` + ``load_all_yahoo()``, no manual augmentation) must
+    produce ``"GS2_yield"`` source labels across the bulk of the pre-SHY
+    window, not ``"zero_fill"``. Prior to the fix every pre-SHY business
+    day in short_bonds was silently zero-filled because ``GS2_yield`` was
+    only constructed inside ``scripts/validate_bond_returns.py``.
+
+    The raw monthly ``GS2`` FRED series begins 1976-06-01, so the earliest
+    ~17 months of the backtest window (1975-01-01 to 1976-06-01) have no
+    yield data and legitimately fall back to the ``zero_fill`` source.
+    The assertion here is that once ``GS2`` data is available, the
+    duration approximation is the source.
+    """
+    data = _load_real_data()
+    _, sources = build_asset_returns(data, return_sources=True)
+
+    # Anchor the "GS2 available" window to the data itself — avoids coupling
+    # the test to manifest dates that may shift as FRED revises history.
+    gs2_start = pd.Timestamp(data["GS2"].index[0])
+    approx_window = (sources.index >= gs2_start) & (
+        sources.index < pd.Timestamp("2002-07-30")
+    )
+    approx_sources = sources.loc[approx_window, "short_bonds"]
+
+    assert (approx_sources == "GS2_yield").all(), (
+        f"expected all short_bonds labelled 'GS2_yield' from GS2 start "
+        f"({gs2_start.date()}) through SHY start, got "
+        f"{approx_sources.value_counts(dropna=False).to_dict()}"
+    )
+    assert (approx_sources != ZERO_FILL_SOURCE).all(), (
+        "post-GS2-start pre-SHY short_bonds window contains 'zero_fill' "
+        "labels — issue #43 has regressed (duration approximation not "
+        "running in production)"
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.spec
+def test_unit_short_bonds_falls_back_to_raw_gs2_when_gs2_yield_missing():
+    """Issue #43 fallback: when only raw monthly ``GS2`` is in the data dict
+    (which is what ``load_all_fred()`` returns), ``_short_bonds_approximation``
+    must construct the daily forward-filled series inline and produce
+    non-zero returns labelled ``"GS2_yield"`` across the pre-SHY window.
+    """
+    nyse_idx = _business_days("1975-01-02", "2005-12-31")
+    sp500 = _price_df(nyse_idx, 70.0, seed=1)
+    tnx = _price_df(nyse_idx, 7.5, seed=2)
+
+    # Raw monthly GS2 — a DataFrame with a single "GS2" column, matching what
+    # load_all_fred() returns from the parquet cache.
+    gs2_monthly_idx = pd.date_range("1974-12-01", "2005-12-01", freq="MS")
+    rng = np.random.default_rng(42)
+    gs2_levels = 5.0 + np.cumsum(rng.normal(0.0, 0.15, size=len(gs2_monthly_idx)))
+    gs2_raw = pd.DataFrame({"GS2": gs2_levels}, index=gs2_monthly_idx)
+
+    etf_idx = _business_days("2002-07-30", "2005-12-31")
+    shy = _price_df(etf_idx, 80.0, seed=4)
+    tlt = _price_df(etf_idx, 90.0, seed=3)
+
+    fed = pd.Series(
+        5.0,
+        index=pd.date_range("1975-01-01", "2006-01-01", freq="MS"),
+        name="FEDFUNDS",
+    )
+
+    data = {
+        "^GSPC": sp500,
+        "^TNX": tnx,
+        "GS2": gs2_raw,  # raw monthly only — no "GS2_yield"
+        "FEDFUNDS": fed,
+        LONG_BONDS_ETF: tlt,
+        SHORT_BONDS_ETF: shy,
+        "WPUSI019011": _monthly_levels("1974-12-01", "2006-01-01", seed=5),
+        "PPIACO": _monthly_levels("1974-12-01", "2006-01-01", seed=7),
+    }
+
+    returns, sources = build_asset_returns(
+        data, start="1975-01-01", return_sources=True
+    )
+
+    pre_shy = sources.index < pd.Timestamp("2002-07-30")
+    pre_shy_sources = sources.loc[pre_shy, "short_bonds"]
+    pre_shy_returns = returns.loc[pre_shy, "short_bonds"]
+
+    # Labelled with the approximation source.
+    assert (pre_shy_sources == "GS2_yield").all(), (
+        f"pre-SHY source labels: "
+        f"{pre_shy_sources.value_counts(dropna=False).to_dict()}"
+    )
+    # Approximation actually produced non-zero returns — proves the fallback
+    # constructed a real daily yield series, not an all-NaN placeholder.
+    assert (pre_shy_returns != 0.0).sum() > 100, (
+        f"expected many non-zero pre-SHY short_bonds returns, got only "
+        f"{(pre_shy_returns != 0.0).sum()} non-zero days"
+    )
+
+
+@pytest.mark.unit
+def test_unit_short_bonds_explicit_gs2_yield_wins_over_raw_gs2_fallback():
+    """Back-compat for issue #43: if the caller supplies ``GS2_yield``
+    explicitly, the implementation must use that series directly rather than
+    the fallback derived from raw monthly ``GS2``. This preserves the
+    behavior callers like ``scripts/validate_bond_returns.py`` rely on.
+    """
+    nyse_idx = _business_days("1975-01-02", "2005-12-31")
+    sp500 = _price_df(nyse_idx, 70.0, seed=1)
+    tnx = _price_df(nyse_idx, 7.5, seed=2)
+
+    # Raw monthly GS2 centered around 5.
+    gs2_monthly_idx = pd.date_range("1974-12-01", "2005-12-01", freq="MS")
+    gs2_raw = pd.DataFrame(
+        {"GS2": np.full(len(gs2_monthly_idx), 5.0)},
+        index=gs2_monthly_idx,
+    )
+
+    # Explicit GS2_yield that differs materially from what the fallback
+    # would derive: a daily series trending from 3.0 upward, NYSE-aligned.
+    explicit_yield = pd.Series(
+        3.0 + np.linspace(0, 2.0, len(nyse_idx)),
+        index=nyse_idx,
+        name="GS2_yield",
+    )
+
+    etf_idx = _business_days("2002-07-30", "2005-12-31")
+    shy = _price_df(etf_idx, 80.0, seed=4)
+    tlt = _price_df(etf_idx, 90.0, seed=3)
+
+    fed = pd.Series(
+        5.0,
+        index=pd.date_range("1975-01-01", "2006-01-01", freq="MS"),
+        name="FEDFUNDS",
+    )
+
+    data = {
+        "^GSPC": sp500,
+        "^TNX": tnx,
+        "GS2": gs2_raw,
+        "GS2_yield": explicit_yield,
+        "FEDFUNDS": fed,
+        LONG_BONDS_ETF: tlt,
+        SHORT_BONDS_ETF: shy,
+        "WPUSI019011": _monthly_levels("1974-12-01", "2006-01-01", seed=5),
+        "PPIACO": _monthly_levels("1974-12-01", "2006-01-01", seed=7),
+    }
+
+    returns, _ = build_asset_returns(
+        data, start="1975-01-01", return_sources=True
+    )
+
+    # Reproduce the approximation formula (duration=2, carry=y[t-1]/252,
+    # clipped to +/-5%) from the EXPLICIT GS2_yield. If the implementation
+    # had ignored the explicit series and fallen back to raw GS2 (flat 5.0),
+    # .diff() would be 0 everywhere and returns would equal 5.0/100/252.
+    y2 = explicit_yield / 100
+    expected = (-2.0 * y2.diff() + y2.shift(1) / 252).clip(-0.05, 0.05)
+
+    # Compare on a mid-sample date where .diff() is defined.
+    probe = pd.Timestamp("1980-06-02")
+    assert probe in returns.index
+    assert returns.loc[probe, "short_bonds"] == pytest.approx(
+        expected.loc[probe], rel=1e-9, abs=1e-12
+    ), (
+        "explicit GS2_yield was not used — implementation likely fell back to "
+        "raw GS2 despite explicit key being present"
+    )

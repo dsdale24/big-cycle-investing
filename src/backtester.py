@@ -304,10 +304,21 @@ def _short_bonds_approximation(data: dict[str, pd.DataFrame]) -> pd.Series:
     Preserved bitwise-identical to the pre-splicing logic: duration=2,
     carry=yield[t-1]/252, clipped to +/-5% per day. See
     specs/backtester.md "Bond return approximation → Formula".
+
+    Looks up ``GS2_yield`` (a daily forward-filled version of the raw monthly
+    ``GS2`` series) in ``data``. If only the raw monthly ``GS2`` is supplied —
+    which is what ``load_all_fred()`` returns in production — the daily
+    series is constructed inline via ``.resample("B").ffill()``, mirroring
+    the logic in ``scripts/validate_bond_returns.py``. An explicit
+    ``GS2_yield`` wins over the fallback, preserving back-compat for callers
+    that supply their own daily series (see issue #43).
     """
     gs2 = data.get("GS2_yield")
     if gs2 is None:
-        return pd.Series(dtype=float, index=pd.DatetimeIndex([]))
+        raw = data.get("GS2")
+        if raw is None:
+            return pd.Series(dtype=float, index=pd.DatetimeIndex([]))
+        gs2 = _as_series(raw).resample("B").ffill()
     y2 = gs2 / 100
     short_bond_ret = -2.0 * y2.diff() + y2.shift(1) / 252
     return short_bond_ret.clip(-0.05, 0.05)
