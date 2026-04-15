@@ -8,10 +8,10 @@
     "meta": 365
   },
   "last_run": {
-    "adversarial": null,
-    "dalio": null,
-    "practitioner": null,
-    "data-quality": null,
-    "meta": null
+    "adversarial": "2026-04-15",
+    "dalio": "2026-04-15",
+    "practitioner": "2026-04-15",
+    "data-quality": "2026-04-15",
+    "meta": "2026-04-15"
   }
 }

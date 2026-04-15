@@ -67,9 +67,14 @@ Each reviewer type may emphasize different sections based on its lens but keeps 
 _A running narrative of what the review series is telling us about project evolution. Update after each new review lands; keep it to 1-2 sentences per review._
 
 - **2026-04-15 — external (human-invoked Claude session):** Identified central tension between transition-scale thesis and cyclical-scale operationalization. Surfaced the need for multi-perspective review infrastructure (this directory). Five concrete findings filed as issues #60–#64; resulting architecture design question tracked as #65.
+- **2026-04-15 — first internal cycle (adversarial / dalio / practitioner / data-quality + meta):** Four lenses converged independently on one finding — the project is operationalizing what the data can measure, not what the thesis claims to test. Adversarial names this as #52 (cross-national data) stalling while review-infrastructure proliferates; Dalio names the missing five-stage arc and under-covered empire drivers; practitioner names an unwritten ops manual (tax, roll drag, drawdown discipline); data-quality names silent look-ahead — every cyclical signal `BigCycleStrategy` trades on reads revised FRED values at rebalance time with no publication lag. Meta flags that #12 (personal strategy for Darren) being deferred while four reviewer types analyze the apparatus is a blind-spot signature.
 
 ## Index of reviews
 
 | Date | Type | Reviewer | File |
 |---|---|---|---|
 | 2026-04-15 | external | Outside Claude session | [2026-04-15.md](2026-04-15.md) |
+| 2026-04-15 | adversarial | `review-adversarial` | [2026-04-15-adversarial.md](2026-04-15-adversarial.md) |
+| 2026-04-15 | dalio | `review-dalio` | [2026-04-15-dalio.md](2026-04-15-dalio.md) |
+| 2026-04-15 | practitioner | `review-practitioner` | [2026-04-15-practitioner.md](2026-04-15-practitioner.md) |
+| 2026-04-15 | data-quality | `review-data-quality` | [2026-04-15-data-quality.md](2026-04-15-data-quality.md) |
