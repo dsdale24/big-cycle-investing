@@ -205,7 +205,7 @@ Bridgewater itself reports strategy performance by decomposing into these four e
 - US is in **Stage 5 of the 6-stage empire cycle**, transitioning toward Stage 6
 - US is in **Stage 4 of a 4-stage public-debt bust** (the final stage before resolution)
 - **Specific policy threshold:** deficit must fall from current ~6% of GDP to ~3% of GDP sustained to avoid late-stage resolution
-- **Prediction (per 2026 Fortune interview):** "double-digit interest rates and a sharp (30-50 percent) plunge in government bond prices in the coming decade" if deficit trajectory doesn't change
+- **Prediction (as reported in the Fortune 2026-03-14 interview):** Dalio, per the interviewer's paraphrase and partial quotation, said that unless deficits are reduced, the US could experience "double-digit interest rates and a sharp (30-50 percent) plunge in government bond prices" in the coming decade. This reaches the project through a journalist's reporting, not a Dalio-authored primary source — a direct primary-source quote at the same sharpness has not been located in this session's research. Attribution should be tightened if a primary source surfaces.
 
 **Sources.**
 - *Changing World Order* (2021), Ch. 2 for base-rate framing

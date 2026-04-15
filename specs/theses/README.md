@@ -48,6 +48,8 @@ When recording a thesis test result, always state **which scale(s) it addresses*
 - **`falsified`** — evidence contradicts the claim at a relevant scale (always say which)
 - **`refined`** — superseded by a sharper version (link forward)
 - **`confirmed`** — tested across multiple scales or via strong cross-national evidence with consistent results (rare; high bar)
+- **`forthcoming`** — thesis has been filed as an issue but not yet drafted; no claim body, no evidence log. Placeholder status used in index tables to signal pre-draft state (the issue link in the index row tells you what's coming). Not applied to thesis files themselves — a file's status should always be one of the substantive values above.
+- **`stub (forthcoming)`** — thesis file exists but is minimally articulated; structure is present (empty evidence log, placeholder claim and falsification) but the argument is a sketch. A stub promoted to full draft gets status `active` and loses the parenthetical.
 
 The body of each thesis is more important than the status label. A one-word status can't capture scale-conditional results; the prose must.
 
