@@ -39,7 +39,7 @@ The cyclical-scale result is a useful descriptive fact (it constrains what the c
 
 The component-decomposition diagnostic ran the same lead-lag analysis (k ∈ {−24, −12, −6, −3, 0, +3, +6, +12, +24}) and per-episode table separately on each of the 3 single components and the 3 pairwise composites. Headline:
 
-| Series | k at peak |corr| | Peak corr |
+| Series | k at peak abs(corr) | Peak corr |
 |---|---|---|
 | Gini (z, pub-lag-shifted) | +6 | +0.066 |
 | EPU (z) | +3 | −0.190 |
