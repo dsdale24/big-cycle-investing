@@ -45,7 +45,8 @@ pytest -m spec                  # Only spec-anchored tests — audit "what enfor
 - `configs/series.yaml` — registry of ~55 data series with metadata
 - `scripts/fetch_data.py` — entry point to download all data
 - `notebooks/` — exploration and analysis (01: financial, 02: civilizational, 03: backtest)
-- `specs/` — component specifications and indicator taxonomy — top-level because specs are the primary entry point for development
+- `specs/` — component specifications, indicator taxonomy, and project theses — top-level because specs are the primary entry point for development
+- `specs/theses/` — project theses: claims and scenarios that inform which components get built and how results are interpreted. See `specs/theses/README.md` for the scale principle (cyclical / secular / transition) and status vocabulary. Theses sit one layer above specs; when a thesis status changes, any spec that depended on it should be reviewed.
 - `data/` — cached parquet files (gitignored), `data/manifest.json` tracks fetch results
 
 ## Spec-driven development
@@ -101,6 +102,15 @@ you're about to stabilize, write the spec BEFORE the refactor.
   and add a test. The spec grows from real failures, not hypothetical ones.
 - **Every PR touching a specced component** should reference the relevant spec and
   note whether the spec was updated as part of the change.
+
+### Theses inform specs
+
+`specs/theses/` holds project theses — claims about how the world works that shape which components get built and how results are interpreted. Theses are NOT specs (they're not code contracts) but they're upstream of them: a bond-allocation thesis shapes what BigCycleStrategy's base weights should look like; the backtest-sample-scope thesis shapes how backtest results should be framed in `docs/research/*.md`.
+
+- **Before running an experiment** — check `specs/theses/` to see what claim it's testing. If you're about to test something whose thesis isn't in there, consider whether it should be — new theses come up during research.
+- **When a test produces results** — update the relevant thesis's "Current evidence" section. Don't overwrite prior entries; build the evidence log. Note the scale (cyclical / secular / transition) the test addresses.
+- **Before changing a thesis's status** — especially to `falsified` or `refined` — review any specs or strategies that depend on it. Status changes can cascade.
+- **Read `specs/theses/README.md`** — the scale principle (cyclical / secular / transition) is load-bearing. A test at one scale is silent on another. Mixing scales has already caused reasoning errors in this project.
 
 ## Workflow
 
