@@ -45,7 +45,7 @@ A `non_sovereign_heavy` base profile was added to `BigCycleStrategy` reducing so
 | BigCycle scored (non-sovereign base, 25% sov.) | 7.50% | 19.10% | 0.39 | −61.1% |
 
 Per-decade max DD (non-sovereign variant only):
-- 1980s: −10.3% (shallowest of all 3 strategies that decade — inflation-tail behavior consistent with thesis)
+- 1980s: −10.3% (shallowest of all 4 strategies that decade — inflation-tail behavior consistent with thesis)
 - 1990s: −15.1%
 - 2000s: −34.4%
 - 2010s: −24.9%
