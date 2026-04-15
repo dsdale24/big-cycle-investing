@@ -69,7 +69,8 @@ approach was wrong. This is expected and healthy in a research project.
 ### Current spec status
 | Component | Status | Spec location |
 |-----------|--------|---------------|
-| Data pipeline (`data_fetcher.py`) | Stabilizing | `specs/data_pipeline.md` |
+| Data pipeline (`data_fetcher.py`, US) | Stabilizing | `specs/data_pipeline/us.md` |
+| Data pipeline (UK) | Stabilizing | `specs/data_pipeline/uk.md` |
 | Indicators (`indicators.py`) | Exploring | — |
 | Backtester core (`backtester.py`) | Stabilizing | `specs/backtester.md` |
 | Walk-forward constraint | Stabilizing | `specs/backtester.md` |

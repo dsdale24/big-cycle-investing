@@ -1,6 +1,6 @@
 # Data pipeline specs
 
-The US data pipeline spec at [`specs/data_pipeline.md`](../data_pipeline.md) is the **baseline** — it governs `src/data_fetcher.py`, `configs/series.yaml`, `scripts/fetch_data.py`, and the corresponding tests for US-side FRED and Yahoo Finance data. That spec's conventions (parquet-per-series cache layout, YAML registry schema, manifest schema, idempotent fetch, publication-lag metadata) are the foundation for all pipeline work.
+The US data pipeline spec at [`us.md`](us.md) is the **baseline** — it governs `src/data_fetcher.py`, `configs/series.yaml`, `scripts/fetch_data.py`, and the corresponding tests for US-side FRED and Yahoo Finance data. That spec's conventions (parquet-per-series cache layout, YAML registry schema, manifest schema, idempotent fetch, publication-lag metadata) are the foundation for all pipeline work.
 
 This folder holds **country-specific extensions** for cross-national data work (see issue #52 and the Dalio-principles reference at `specs/theses/changing-world-order/dalio-principles.md` §9). Each country spec:
 
@@ -13,13 +13,12 @@ This folder holds **country-specific extensions** for cross-national data work (
 
 | Spec | Status | Phase (per #52) | Source |
 |---|---|---|---|
+| [`us.md`](us.md) | Stabilizing | baseline | FRED (`fredapi`) + Yahoo Finance (`yfinance`) |
 | [`uk.md`](uk.md) | Stabilizing | Phase A | Bank of England "A Millennium of Macroeconomic Data" workbook (v3.1) |
 
 Future specs (Phase B onward) will appear here: Dutch guilder, JST macrohistory panel, pre-1780 multi-empire. Each new country spec introduces at most the deltas relative to the baseline and prior country specs — a single monolithic "cross-national pipeline" spec was considered and rejected (see issue #52 discussion) because the per-country sources, schemas, and availability differ enough that one spec would become unwieldy.
 
-## When to move the US spec into this folder
-
-The US spec stays at `specs/data_pipeline.md` for now. If the pattern of country-per-file stabilizes (three or more country specs in this folder), consider promoting the US spec to `specs/data_pipeline/us.md` and making this folder the single home for all pipeline specs. Not required now; deferred decision.
+The US spec is the baseline for all country-specific extensions: its conventions (parquet-per-series cache, YAML registry schema, manifest structure, idempotent fetch, DatetimeIndex) are inherited unchanged by country specs unless explicitly overridden. See issue #96 for hardening the US spec to match the stabilizing-spec standard enumerated in CLAUDE.md (enumerated spec-anchored test cases, version-pinning model, publication-lag resolution per #72).
 
 ## Related
 

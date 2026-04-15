@@ -2,7 +2,7 @@
 
 Status: **Stabilizing**
 Last updated: 2026-04-15
-Depends on: [`specs/data_pipeline.md`](../data_pipeline.md) (US pipeline baseline — conventions inherited unless overridden here)
+Depends on: [`us.md`](us.md) (US pipeline baseline — conventions inherited unless overridden here)
 Related theses: [`specs/theses/changing-world-order/us-fiscal-deterioration.md`](../theses/changing-world-order/us-fiscal-deterioration.md), [`specs/theses/changing-world-order/backtest-sample-scope.md`](../theses/changing-world-order/backtest-sample-scope.md)
 Related issues: #52 (parent — Phase A of cross-national data), #91 / #92 / #93 / #94 (known follow-up data gaps)
 
@@ -12,7 +12,7 @@ Fetch, cache, and serve UK macro/asset/real-asset series for Phase A of the cros
 
 ## Relationship to the US pipeline baseline
 
-This spec extends `specs/data_pipeline.md`. Conventions inherited unchanged:
+This spec extends [`us.md`](us.md). Conventions inherited unchanged:
 
 - Parquet-per-series cache layout, one file per series
 - YAML registry schema's required fields (`name`, `category`, `frequency`, `description`); extended below with cross-national-specific fields
