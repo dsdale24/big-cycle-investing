@@ -96,3 +96,31 @@ If applicable, a **Spec→test coverage matrix**: for each test case in the rele
 `<spec test case phrasing> — <test function name> — VERIFIED | WEAK | MISSING`
 
 Do not recommend changes unless they're required to meet the spec. This is a spec-conformance review, not a code-improvement session.
+
+## Embedded review block (REQUIRED)
+
+After the freeform analysis above, append a final section formatted EXACTLY as below. This block is the durable artifact — the coordinator will paste it verbatim into a PR comment and into the merge commit body so the review is permanently attached to the PR thread and to git history.
+
+Keep the block self-contained: a future reader looking at the merge commit a year from now should understand what changed and what the review found, without needing the rest of your freeform analysis.
+
+```markdown
+## Pre-merge review
+
+**Verdict:** PASS | PASS-WITH-NITS | CHANGES-REQUIRED | BLOCKED
+
+**Reviewed:** <one-line characterization of what the PR changes — e.g., "Splice TLT/SHY for long_bonds/short_bonds 2002+; spec + impl + 11 tests">
+
+**Spec conformance:** <verified against which specs, in one sentence; or "no spec applies" for exploring/docs PRs>
+
+**Findings:**
+- Critical: <none | bullets>
+- Major: <none | bullets>
+- Minor: <none | bullets>
+- Nit: <none | bullets>
+
+**Tests:** <counts before/after, e.g., "27 → 34 unit, 0 → 3 integration, all passing">
+
+_Reviewed independently by the `review-pr` subagent. Verdict is independent of the author's PR description._
+```
+
+Use literal `none` (not "N/A" or empty) for severity buckets with no findings, so the section reads consistently. If a finding is too long for a bullet, summarize it in the bullet and reference the freeform analysis above.

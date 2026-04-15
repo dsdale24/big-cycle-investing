@@ -171,7 +171,7 @@ If you (the coordinator) catch yourself reaching for `Edit` or `Write` on a deny
 4. Coordinator delegates to a review agent to check implementation against spec
 5. Coordinator reviews findings, approves or sends back
 6. Coordinator pushes the branch and opens a pull request (never merges locally to main)
-7. Before merging, coordinator runs a **pre-merge review** of the PR — either via `/review-pr <number>` (which delegates to the `review-pr` subagent defined at `.claude/agents/review-pr.md`) or by spawning the agent directly with `Agent(subagent_type="review-pr", ...)`. Merge only on PASS or PASS-WITH-NITS (see #15 for the Level 1/2/3 escalation path toward CI enforcement)
+7. Before merging, coordinator runs a **pre-merge review** of the PR — either via `/review-pr <number>` (which delegates to the `review-pr` subagent defined at `.claude/agents/review-pr.md`) or by spawning the agent directly with `Agent(subagent_type="review-pr", ...)`. The agent's report ends with an embedded `## Pre-merge review` block; the coordinator (or `/review-pr`) posts that block verbatim as a PR comment immediately, and on merge approval includes the same block in the merge commit body via `gh pr merge --body`. Same review lands in two durable places: the PR thread on GitHub (visible to author and future readers) and the merge commit (permanent, surfaces in `git log`). Merge only on PASS or PASS-WITH-NITS (see #15 for the Level 1/2/3 escalation path toward CI enforcement)
 8. Work is landed by merging the PR — this preserves a reviewable artifact, keeps a searchable history, and gives CI and the review agent a surface to hook into
 
 **Coding agents work in the main checkout, not worktrees.** Earlier versions of
