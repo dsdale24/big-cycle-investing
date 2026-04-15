@@ -47,6 +47,7 @@ The body of each thesis is more important than the status label. A one-word stat
 | [institutional-adaptation](institutional-adaptation.md) | `active` | The printing press → Reformation arc is a complementary precedent to empire decline: a technology-driven, faster, coalition-scrambling transition mode. |
 | [regime-aware-allocation](regime-aware-allocation.md) | `tested` (cyclical, weak) | Regime-conditional allocation beats fixed-weight allocation. |
 | [civilizational-leads-financial](civilizational-leads-financial.md) | `tested` (cyclical scale only; transition scale untested) | Civilizational stress indicators lead financial stress; they enable earlier portfolio positioning than financial indicators alone. |
+| [us-fiscal-deterioration](us-fiscal-deterioration.md) | `active` | US deficit trajectory + eroding Treasury demand + hegemony decline imply monetization as the likeliest terminal debt-cycle resolution — the central project thesis. |
 
 ## Adding a thesis
 
