@@ -31,7 +31,7 @@ During active development, quarterly cadence is too infrequent — but saving ev
 
 Every review command accepts `--ephemeral`:
 
-- Output goes to `reviews/.ephemeral/<type>/YYYY-MM-DD-<type>.md` (meta) or `reviews/.ephemeral/YYYY-MM-DD-<type>.md` (project-level). The directory is gitignored.
+- Output goes to `reviews/.ephemeral/YYYY-MM-DD-<type>.md` for project-level reviewers, or `reviews/.ephemeral/meta/YYYY-MM-DD-meta.md` for the meta reviewer. The `.ephemeral/` directory is gitignored.
 - `.claude/review-state.json` is NOT updated (ephemeral runs don't count toward cadence).
 - `reviews/README.md` is NOT updated (ephemeral runs are not part of the series).
 - No commit flow is offered.

@@ -112,6 +112,52 @@ you're about to stabilize, write the spec BEFORE the refactor.
 - **Before changing a thesis's status** — especially to `falsified` or `refined` — review any specs or strategies that depend on it. Status changes can cascade.
 - **Read `specs/theses/README.md`** — the scale principle (cyclical / secular / transition) is load-bearing. A test at one scale is silent on another. Mixing scales has already caused reasoning errors in this project.
 
+## Periodic reviews
+
+This project uses **multi-perspective periodic reviews** as a distinct feedback loop from PR-level review. Motivation: the PR-level `review-pr` agent catches spec-conformance issues within a single diff, but cannot see project-level drift (e.g., the cyclical-vs-transition tension surfaced in the 2026-04-15 external review). Different scales of feedback require different reviewers.
+
+### Reviewer types
+
+| Reviewer | Lens | Cadence target |
+|---|---|---|
+| `review-pr` | Spec conformance for a specific PR | Pre-merge (every mergeable PR) |
+| `review-adversarial` | What the project is wrong about, what's avoided, where evidence is weak | Quarterly |
+| `review-dalio` | Faithful application of Dalio's big-cycle framework | Quarterly |
+| `review-practitioner` | Operational gap between backtest and real execution | Before strategy → `settled` |
+| `review-data-quality` | Measurement soundness, unaudited approximations, silent leakage | After significant splicing/indicator work |
+| `review-meta` | Evolution across the review series | Annually or after 3+ saved reviews |
+
+Slash commands invoke each: `/review-adversarial`, `/review-dalio`, `/review-practitioner`, `/review-data-quality`, `/review-meta`. An umbrella `/review-cycle` runs the four project-level reviewers in parallel (those whose cadence is due by default; all four with `--all`), then meta sequentially.
+
+Cadence is tracked in `.claude/review-state.json` but not enforced by automation. A review done reluctantly because cron fired it has no teeth.
+
+### Saved vs. ephemeral
+
+Reviews run in one of two modes:
+
+- **Saved (default):** output lands in `reviews/YYYY-MM-DD-<type>.md`, committed via PR, counts toward the meta-review series, updates cadence state. This is the durable record.
+- **Ephemeral (`--ephemeral` flag):** output lands in `reviews/.ephemeral/` (gitignored), skips state/README updates, no commit flow. Use for pulse-checks during rapid development when you want feedback without polluting the series signal or overloading the meta reviewer with drafts.
+
+To promote an ephemeral review to saved: move the file from `reviews/.ephemeral/` to `reviews/` (or `reviews/meta/`), then update `.claude/review-state.json` and `reviews/README.md` manually (or re-run the command without `--ephemeral` to regenerate).
+
+The meta reviewer explicitly ignores `reviews/.ephemeral/` when reading the series.
+
+### How reviews relate to theses and specs
+
+- **Reviews inform theses and specs**, not the other way around. A review finding may generate a new issue, a spec update, or a thesis-evidence-log entry — not automatically, but through coordinator review of the finding.
+- **Reviews are not living documents.** Once written, they're frozen. Aging is information — a concern from a prior review that's still live tells you something different from a concern that's been resolved.
+- **The series is the signal.** Individual reviews are snapshots. The pattern across reviews over time is what the meta reviewer looks for — and what `reviews/README.md`'s meta-story section captures in running commentary.
+
+### When to run what
+
+- **Pulse-check during a session:** `/review-adversarial --ephemeral` or similar; digest in-session, don't commit.
+- **End of a substantive work cycle (PR landed on a big thesis or component):** run `/review-cycle` in default mode; commit the batch; let meta reason across the series.
+- **Full milestone review:** `/review-cycle --all`; forces every reviewer type.
+- **Before promoting a strategy to `settled`:** `/review-practitioner` saved.
+- **After data-pipeline changes:** `/review-data-quality` saved.
+
+See `reviews/README.md` for the full documentation.
+
 ## Workflow
 
 **All work happens on branches. Never commit directly to main, and never merge
@@ -137,6 +183,9 @@ Labels: `exploring`, `stabilizing`, `bug`, `data`. See issue #13 for the full ro
   when they land. The skill reports new entries in three buckets (ticks #33
   / likely relevant / worth noting) and asks the coordinator what to act on.
 - Check open issues with `gh issue list` before starting substantive work.
+- Check `.claude/review-state.json` — if any reviewer type is past its cadence
+  target, surface it to the user as a one-line reminder. Don't auto-run
+  reviews; the coordinator decides. See "Periodic reviews" above.
 
 Reference issues in commits (e.g., "Fixes #1"). Commits from `stable/*`
 branches must reference the spec they conform to.
