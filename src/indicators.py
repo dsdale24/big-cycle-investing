@@ -4,6 +4,8 @@ Each indicator function takes raw dataframes and returns a new series.
 These are building blocks for strategy signals — add freely as hypotheses emerge.
 """
 
+from __future__ import annotations
+
 import pandas as pd
 import numpy as np
 
@@ -131,3 +133,104 @@ def regime_classifier(
     )
 
     return regimes
+
+
+# --- Civilizational composites ---
+
+
+def shift_by_publication_lag(
+    series: pd.Series,
+    publication_lag_months: int,
+) -> pd.Series:
+    """Shift a series forward in time by a publication lag, in months.
+
+    Models the real-world delay between when a value is realized (the index
+    timestamp) and when it would have been publicly available. For an annual
+    Gini stamped 2024-12-31 with a 9-month lag, the shifted series carries
+    that value at 2025-09-30 — the earliest a backtest at month t could
+    legitimately know it.
+    """
+    if publication_lag_months < 0:
+        raise ValueError("publication_lag_months must be >= 0")
+    if series.empty:
+        return series.copy()
+    shifted_index = series.index + pd.DateOffset(months=publication_lag_months)
+    return pd.Series(series.values, index=shifted_index, name=series.name)
+
+
+def _rolling_zscore_strict(monthly: pd.Series, window: int) -> pd.Series:
+    """Rolling z-score that requires a full window before emitting a value.
+
+    Uses ``min_periods=window`` so early-period values are NaN rather than
+    noisy estimates from a 1-12 month window.
+    """
+    rolling_mean = monthly.rolling(window, min_periods=window).mean()
+    rolling_std = monthly.rolling(window, min_periods=window).std()
+    return (monthly - rolling_mean) / rolling_std
+
+
+def internal_order_stress_index(
+    gini: pd.Series,
+    epu: pd.Series,
+    sentiment: pd.Series,
+    *,
+    publication_lag_months: int = 9,
+    zscore_window: int = 120,
+) -> pd.Series:
+    """Composite z-score signal for internal-order stress, from notebook 02.
+
+    Components (equal-weight average of z-scores):
+
+    - Gini inequality (annual, shifted forward by ``publication_lag_months``
+      to respect real-world publication delay — e.g., 2024 Gini published
+      ~mid-2025).
+    - EPU Baker-Bloom-Davis policy uncertainty (monthly).
+    - Consumer sentiment, inverted (monthly; higher value = more stress).
+
+    Returns a monthly series indexed by month-end dates. Walk-forward safe:
+    at month t, only data published by t (i.e., with publication_lag respected)
+    is used. Uses a rolling ``zscore_window`` rather than expanding to
+    stabilize the early-period noise noted in issue #4's design questions.
+
+    See specs/indicator_framework.md §6 "Wealth Inequality & Internal Order"
+    and §"Using Low-Frequency Data".
+    """
+    if publication_lag_months < 0:
+        raise ValueError("publication_lag_months must be >= 0")
+    if zscore_window < 2:
+        raise ValueError("zscore_window must be >= 2")
+
+    gini = gini.dropna().sort_index()
+    epu = epu.dropna().sort_index()
+    sentiment = sentiment.dropna().sort_index()
+
+    # Publication-lag shift on the annual Gini, then resample to month-end and
+    # forward-fill so each month carries the most recently published value.
+    gini_shifted = shift_by_publication_lag(gini, publication_lag_months)
+    gini_monthly = gini_shifted.resample("ME").last().ffill()
+
+    epu_monthly = epu.resample("ME").last()
+    sentiment_monthly = sentiment.resample("ME").last()
+
+    gini_z = _rolling_zscore_strict(gini_monthly, zscore_window)
+    epu_z = _rolling_zscore_strict(epu_monthly, zscore_window)
+    # Invert sentiment so higher = more stress.
+    sentiment_z = _rolling_zscore_strict(-sentiment_monthly, zscore_window)
+
+    components = pd.concat(
+        [
+            gini_z.rename("gini_z"),
+            epu_z.rename("epu_z"),
+            sentiment_z.rename("sentiment_inv_z"),
+        ],
+        axis=1,
+        sort=False,
+    )
+    # Require all three components to be defined at month t — keeps the
+    # composite honestly defined only where every input is observable under
+    # the walk-forward constraint.
+    components = components.dropna()
+
+    composite = components.mean(axis=1)
+    composite.name = "internal_order_stress"
+    return composite
