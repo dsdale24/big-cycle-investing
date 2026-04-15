@@ -246,6 +246,17 @@ information.
   `source` column or companion Series) so analysis can distinguish proxy from
   primary periods. Source labels must be populated on every business day the
   returns frame is populated on.
+- Source labels are one of: a primary-data identifier (e.g., `"^GSPC"`,
+  `"GC=F"`, `"TLT"`), a proxy-series identifier (e.g., `"WPUSI019011"`,
+  `"PPIACO"`), an approximation identifier (e.g., `"^TNX"`, `"GS2_yield"`),
+  or the sentinel `"zero_fill"` for days where no source covers the asset
+  and the spec permits zero-filling. The sentinel exists so the
+  populated-everywhere invariant can hold even on legitimately
+  zero-filled days; analysts can distinguish "real return" from "padded
+  return" by membership in this set. `APPROXIMATION_SOURCES` (see "Data
+  quality") explicitly excludes `"zero_fill"` because zero-fill is an
+  absence of data, not a model approximation — a different uncertainty
+  class.
 
 ### Test cases
 - Given WPUSI019011 monthly returns of +1% for February 1980, every trading day
