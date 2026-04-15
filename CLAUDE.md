@@ -102,10 +102,19 @@ you're about to stabilize, write the spec BEFORE the refactor.
   and add a test. The spec grows from real failures, not hypothetical ones.
 - **Every PR touching a specced component** should reference the relevant spec and
   note whether the spec was updated as part of the change.
+- **At delegation time:** before spawning a coding agent, the coordinator MUST
+  state the branch prefix in the delegation prompt and the rationale. If the
+  prefix is `stable/`, the spec MUST exist before the implementation delegation
+  (not written concurrently). The coordinator's first commit on a `stable/`
+  branch MUST be the spec; implementation delegations follow. This is enforced
+  by the file-type rule in the Workflow section — tests or `src/` code in a
+  delegation prompt mean `stable/` and spec-first, no exceptions.
 
 ### Theses inform specs
 
 `specs/theses/` holds project theses — claims about how the world works that shape which components get built and how results are interpreted. Theses are NOT specs (they're not code contracts) but they're upstream of them: a bond-allocation thesis shapes what BigCycleStrategy's base weights should look like; the backtest-sample-scope thesis shapes how backtest results should be framed in `docs/research/*.md`.
+
+The theses in this directory are organized as an **umbrella thesis** with sub-theses that compose it, plus peer-level **counter-theses** that oppose it. The umbrella lives at `specs/theses/changing-world-order/` (the Dalio-inspired worldview); sub-theses are files in that folder; counter-theses sit at the top level of `specs/theses/`. See `specs/theses/README.md` for structure and `specs/theses/changing-world-order/dalio-principles.md` for the reference catalog of Dalio's specific modeling specifications the project builds against. Stance: **Dalio-inspired, not Dalio-faithful** — scaffolding accepted where useful, departures named explicitly. **Paired evidence tracking is load-bearing**: new data updates both the umbrella's evidence log AND any relevant counter-thesis, symmetrically.
 
 - **Before running an experiment** — check `specs/theses/` to see what claim it's testing. If you're about to test something whose thesis isn't in there, consider whether it should be — new theses come up during research.
 - **When a test produces results** — update the relevant thesis's "Current evidence" section. Don't overwrite prior entries; build the evidence log. Note the scale (cyclical / secular / transition) the test addresses.
@@ -165,12 +174,25 @@ branches locally to main — always land changes via a pull request.**
 
 | Branch prefix | Purpose | Spec required? |
 |---------------|---------|----------------|
-| `explore/{phase}/{feature}` | Exploratory work — notebooks, new indicators, prototypes | No |
+| `explore/{phase}/{feature}` | Exploratory work — notebooks, research notes, prototypes | No |
 | `stable/{phase}/{feature}` | Stabilization — spec must be updated before implementation, tests required | Yes |
 | `fix/{description}` | Bug fixes — update spec if the bug revealed a missing invariant | If specced |
 | `docs/{description}` | Documentation, specs, CLAUDE.md changes | N/A |
 
 Examples: `explore/phase1/civilizational-indicators`, `stable/phase2/regime-classifier`, `fix/walk-forward-leak`
+
+**How to choose `explore/` vs `stable/` — file-type heuristic (hard rule).**
+
+The "about to be depended on by other components" criterion in the spec lifecycle is soft and has been misapplied (see governance-miss note below). Replace it with a file-type rule:
+
+- **Any PR that creates or modifies files in `src/`, `tests/`, or `configs/` is stabilizing by default**, regardless of how exploratory the research intent feels. Such PRs MUST use `stable/` and the spec MUST be written first.
+- `explore/` MUST be used only when the work is purely in `notebooks/`, `docs/research/`, or `data/`.
+- If a single stream of work needs both — a research notebook AND a new data-fetcher module — it MUST be split into two PRs: one `explore/` for the analytical output, one `stable/` for the infrastructure. Different branches, different review standards.
+- Mixed-scope in one PR is permitted only with explicit justification in the PR body and coordinator sign-off. The default is split.
+
+The goal of this rule: coordinator judgment is no longer required to decide "is this exploratory?" The decision is answered by looking at the diff's file paths. Tests alone (even if you feel the work is exploratory) are implicit stable-contract claims — exploratory work doesn't need them.
+
+**Governance-miss note (2026-04-15):** Phase A of issue #52 was delegated to `explore/uk-sterling-transition` when the work created `src/data_fetcher_uk.py`, `configs/series_uk.yaml`, `scripts/fetch_uk_data.py`, and `tests/test_uk_data_fetcher.py`. Per the file-type rule above, it should have been `stable/phase2/uk-data-pipeline` with a spec authored first. The coordinator accepted this miss explicitly, preserved the exploratory implementation as `archive/uk-phase-a-no-spec-2026-04-15`, and re-did the stabilization under the new regime. The re-do is the test of this rule's value; the archive and `docs/research/spec-driven-vs-exploratory-uk-phase-a.md` are the comparison artifacts.
 
 **Tracking:** Bugs, features, and tasks are GitHub issues at dsdale24/big-cycle-investing.
 Labels: `exploring`, `stabilizing`, `bug`, `data`. See issue #13 for the full roadmap.

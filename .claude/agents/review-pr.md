@@ -31,6 +31,23 @@ Then read each relevant spec file in full before evaluating conformance. Do not 
 
 ## What to verify
 
+### 0. Governance gate — branch prefix and spec coverage (run this FIRST)
+
+Before checking code-against-spec, verify the PR should have a spec in the first place. Silently PASSing a PR that violates spec-first governance is the failure mode this check prevents.
+
+**File-type heuristic (hard rule per CLAUDE.md Workflow section).** Any PR creating or modifying files in `src/`, `tests/`, or `configs/` is stabilizing by default, regardless of branch prefix or how exploratory the research intent feels. Work that is purely `notebooks/`, `docs/research/`, or `data/` may be exploratory and spec-exempt.
+
+**Check:**
+
+- Does the diff touch `src/`, `tests/`, or `configs/`? (Ignore `.vscode/` and other transient dev-environment files.)
+- If yes, identify which spec(s) under `specs/` govern the touched area. The spec may be pre-existing or authored in this PR's commits.
+- If no spec exists covering the touched area: this is a CHANGES-REQUIRED governance finding. Do NOT silently PASS — the rest of the review has no contract to check against. Surface the finding explicitly and cite CLAUDE.md's Workflow-section rule.
+- If the branch prefix is `explore/` but the diff touches `src/`, `tests/`, or `configs/`: flag as a governance mismatch even if a spec exists. `explore/` MUST NOT contain stabilizing-surface changes.
+
+**One-time-exception clause.** If the PR body explicitly acknowledges a governance exception — e.g., "spec authoring follow-up coming in PR #X, coordinator has approved this exception" — note the exception as a Major finding with a citation to the follow-up, allow the review to proceed on the remaining sections, but do NOT quietly absorb the exception. The durable review block must name it so the PR thread and merge commit record the exception for future reference.
+
+Report this check's result at the top of the findings section before proceeding to specs conformance.
+
 ### 1. Spec conformance
 
 For each spec the caller listed:
