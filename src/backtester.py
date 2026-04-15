@@ -625,11 +625,46 @@ class BigCycleStrategy:
         "real_rate_negative_threshold": 0.0,
     }
 
-    def __init__(self, config: dict | None = None, mode: str = "scored"):
+    # Named base-weight profiles (see issue #50). The "balanced" profile is
+    # the historical default; "non_sovereign_heavy" reduces sovereign-liability
+    # exposure (long bonds + short bonds + cash) from 45% to 25%, reallocating
+    # into gold and commodities per the bond-allocation thesis.
+    BASE_PROFILES: dict[str, dict[str, float]] = {
+        "balanced": {
+            "base_equities": 0.30,
+            "base_long_bonds": 0.25,
+            "base_short_bonds": 0.10,
+            "base_gold": 0.15,
+            "base_commodities": 0.10,
+            "base_cash": 0.10,
+        },
+        "non_sovereign_heavy": {
+            "base_equities": 0.30,
+            "base_long_bonds": 0.05,
+            "base_short_bonds": 0.05,
+            "base_gold": 0.25,
+            "base_commodities": 0.20,
+            "base_cash": 0.15,
+        },
+    }
+
+    def __init__(
+        self,
+        config: dict | None = None,
+        mode: str = "scored",
+        base_profile: str = "balanced",
+    ):
         if mode not in ("binary", "scored"):
             raise ValueError(f"mode must be 'binary' or 'scored', got {mode!r}")
-        self.config = {**self.DEFAULT_CONFIG, **(config or {})}
+        if base_profile not in self.BASE_PROFILES:
+            valid = sorted(self.BASE_PROFILES)
+            raise ValueError(
+                f"base_profile must be one of {valid}, got {base_profile!r}"
+            )
+        profile_weights = self.BASE_PROFILES[base_profile]
+        self.config = {**self.DEFAULT_CONFIG, **profile_weights, **(config or {})}
         self.mode = mode
+        self.base_profile = base_profile
 
     def _base_weights(self) -> dict[str, float]:
         return {
