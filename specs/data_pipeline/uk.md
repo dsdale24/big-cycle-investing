@@ -45,6 +45,8 @@ Primary source: **Bank of England "A Millennium of Macroeconomic Data" workbook*
 
 Phase A of this pipeline targets **annual series** from the `A*` sheets. Monthly series extension is explicitly out of scope for this phase (see issue #94).
 
+**A1 "Headline series" column-identification convention.** Multiple distinct series in A1 share the same Description row (row 3) — e.g., "Bank Rate" has both end-period and year-average variants; "Real UK GDP at market prices" has both level and growth variants. The `(source_sheet, source_column)` pair MUST NOT be treated as a primary key for A1; the registry's `source_column_units` field (Units row, row 5) is required for disambiguation. The spec's schema reflects this: `source_column_units` is not optional for A1-sourced series with shared Descriptions, even though a Description-only lookup may appear to work for other sheets.
+
 ### Cache and version pinning
 
 The workbook is pre-cached at `data/raw/uk/_source/millennium_of_macro_data.xlsx`. **No network fetch at any time.** This is the hard rule — see "Error behavior" below for what happens when the cache is missing.
@@ -109,9 +111,8 @@ The list was expanded on 2026-04-15 from the original 17 required series (per #5
 **Financial assets:**
 - UK equity index (BoE consolidated long series)
 - Gold price in GBP — currently expected `status: unavailable` for post-1971 per issue #93
-- GBP/USD exchange rate (nominal, GBP per USD)
-- USD/GBP exchange rate (nominal, USD per GBP — inverse; carried for convenience, avoids per-use conversion)
-- Real GBP/USD exchange rate (CPI-adjusted; preferred signal for transition-scale analysis)
+- USD/GBP nominal exchange rate — the BoE workbook exposes USD-per-GBP natively (the "$/£" column in A1; ~$4.86 classical parity). GBP/USD is derivable as 1/x in consumer code, not registered as a separate series
+- Real USD/GBP exchange rate (CPI-adjusted; preferred signal for transition-scale analysis)
 
 **Real assets:**
 - UK land prices (agricultural)
@@ -125,7 +126,7 @@ The list was expanded on 2026-04-15 from the original 17 required series (per #5
 - Real GDP growth rate
 - Unemployment rate
 - Current account / GDP
-- Trade balance / GDP (goods+services only; distinct from current account which includes primary/secondary income)
+- Trade balance / GDP (goods+services only; distinct from current account which includes primary/secondary income). **Sign convention:** the BoE workbook's "Trade deficit" column stores deficit as positive; this differs from `uk_public_deficit_gdp` which uses negative=deficit. Downstream consumers MUST check the description field before aggregating across series.
 
 **Reserve status:**
 - Sterling share of global reserves — currently expected `status: unavailable` per issue #91
