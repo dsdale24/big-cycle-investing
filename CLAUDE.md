@@ -110,7 +110,21 @@ you're about to stabilize, write the spec BEFORE the refactor.
   branch MUST be the spec; implementation delegations follow. This is enforced
   by the file-type rule in the Workflow section — tests, `src/` code, or
   `configs/` changes in a delegation prompt mean `stable/` and spec-first, no
-  exceptions.
+  exceptions. For `stable/` delegations, the coordinator MUST also cite the
+  upstream `explore/` branch or research artifact that informed the spec, or
+  explicitly acknowledge "no upstream exploration; risk of spec drift during
+  implementation is accepted" (see Workflow section's "Typical phased flow").
+- **Coding-agent commit attribution:** coding agents MUST include a
+  `Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>`
+  (or equivalent current-model) trailer on every commit they produce. The
+  coordinator MUST state this requirement in every delegation prompt. Rationale:
+  the maker-checker model's provenance boundary (coordinator-authored specs,
+  agent-authored code and tests) MUST be auditable from `git log` alone, not
+  just from commit path-level inference. The requirement applies to both
+  coordinator commits on branches agents will push to AND agent commits; the
+  trailer is the durable signal that this commit participated in the
+  maker-checker flow. Review-pr flags missing trailers as a Nit on
+  `stable/` PRs; missing trailers across an entire PR is a Major finding.
 
 ### Theses inform specs
 
@@ -193,6 +207,16 @@ The "about to be depended on by other components" criterion in the spec lifecycl
 - Mixed-scope in one PR is permitted only with explicit justification in the PR body and coordinator sign-off. The default is split.
 
 The goal of this rule: coordinator judgment is no longer required to decide "is this exploratory?" The decision is answered by looking at the diff's file paths. Tests alone (even if you feel the work is exploratory) are implicit stable-contract claims — exploratory work doesn't need them.
+
+**Typical phased flow — `explore/` feeds `stable/`.** The two branch types are not competing modes; they are sequential phases of the same work. The typical flow:
+
+1. **`explore/` phase** — research output: notebooks, research notes under `docs/research/`, data exploration. Findings update relevant theses' evidence logs in `specs/theses/`.
+2. **Coordinator synthesis** — the `explore/` findings inform what a `stable/` spec should contain: what invariants matter, what edge cases exist, what scope to commit to.
+3. **`stable/` phase** — spec written first (per the file-type heuristic above), capturing what was learned; then implementation delegated against the spec.
+
+Skipping the `explore/` phase and going directly to `stable/` — authoring a spec from first principles + the issue description, without upstream research informing it — is a distinct governance miss from violating the file-type heuristic, and the heuristic will not catch it. A `stable/` spec written with no upstream `explore/` inputs is a thin spec; the 2026-04-15 Phase A governance miss combined both failure modes (wrong branch prefix AND no explore phase), and the re-do on the correct branch still had to catch up on explore-phase discoveries during implementation (see PR #98's mid-PR spec updates and the comparison at `docs/research/spec-driven-vs-exploratory-uk-phase-a.md` when it is salvaged).
+
+At delegation time, for any `stable/` delegation, the coordinator MUST either (a) cite the `explore/` branch or research artifact that informed the spec, or (b) explicitly acknowledge "no upstream exploration; spec written from first principles + issue description" and name the risk. Option (b) is permitted but should be rare; it means known spec-drift-during-implementation is expected.
 
 **Governance-miss note (2026-04-15):** Phase A of issue #52 was delegated to `explore/uk-sterling-transition` when the work created `src/data_fetcher_uk.py`, `configs/series_uk.yaml`, `scripts/fetch_uk_data.py`, and `tests/test_uk_data_fetcher.py`. Per the file-type rule above, it should have been `stable/phase2/uk-data-pipeline` with a spec authored first. The coordinator accepted this miss explicitly, preserved the exploratory implementation as `archive/uk-phase-a-no-spec-2026-04-15`, and re-did the stabilization under the new regime. The re-do is the test of this rule's value; the archive and `docs/research/spec-driven-vs-exploratory-uk-phase-a.md` are the comparison artifacts.
 
@@ -334,6 +358,26 @@ Code should be well-organized and self-documenting. Follow:
 
 Prefer clear names and structure over comments. Comments explain *why*, not *what*.
 If code needs a comment to explain what it does, refactor it to be self-evident.
+
+### Error messages cite their governing spec
+
+Error messages raised on missing configuration, missing expected state, or
+spec-invariant violations SHOULD cite (a) the governing spec section that
+defines the invariant being violated, and (b) any relevant issue number.
+
+Rationale: a future maintainer hitting an error at runtime should have a
+direct path from the error's text to the contract the error is enforcing —
+not have to reconstruct the author's reasoning by grepping. The UK pipeline's
+`_MISSING_WORKBOOK_MESSAGE` (at `src/data_fetcher_uk.py`) is an example:
+the error cites `specs/data_pipeline/uk.md §'Obtaining the workbook'` and
+issue `#52`, so a reader hitting the error knows what document defines
+the expected state and where the open work on it is tracked.
+
+This is a SHOULD, not a MUST — trivial runtime errors (value out of range
+in a helper function, etc.) don't need spec references. The rule applies
+to errors that are likely to surface at a usage boundary (missing data,
+missing configuration, invariant violations that users of the module
+would hit).
 
 ## Key constraints
 - All backtesting must be walk-forward: only use data available at each point in time

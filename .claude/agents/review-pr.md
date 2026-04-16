@@ -1,6 +1,6 @@
 ---
 name: review-pr
-description: Pre-merge review agent for the big-cycle-investing project. Independently verifies that a PR conforms to its declared spec(s), checks test quality, and returns a PASS / PASS-WITH-NITS / CHANGES-REQUIRED / BLOCKED verdict. Use before merging any PR — especially PRs from `stable/*` branches (touch a specced component), `fix/*` branches on specced components, or any PR that adds or modifies tests. OK to skip for pure `docs/*` changes that don't touch specs or workflow rules. Caller must supply the PR number and the list of relevant spec files in the prompt.
+description: Pre-merge review agent for the big-cycle-investing project. Independently verifies that a PR conforms to its declared spec(s), checks test quality, enforces the §0 governance gate (spec-coverage check for any PR touching `src/`, `tests/`, or `configs/`; see CLAUDE.md Workflow section), and returns a PASS / PASS-WITH-NITS / CHANGES-REQUIRED / BLOCKED verdict. Use before merging any PR — especially PRs from `stable/*` branches (touch a specced component), `fix/*` branches on specced components, or any PR that adds or modifies tests. OK to skip for pure `docs/*` changes that don't touch specs or workflow rules. Caller must supply the PR number and the list of relevant spec files in the prompt.
 tools: Bash, Read, Grep, Glob
 ---
 
