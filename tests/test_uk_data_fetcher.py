@@ -160,7 +160,7 @@ def test_registry_field_completeness():
     """specs/data_pipeline/uk.md test case 3: every available series has
     source_sheet, source_column, start_year, end_year, publication_lag_days;
     every unavailable series has unavailable_reason and unavailable_followup_issue.
-    Also enforces the §"Required target-series coverage" list (17 series) and
+    Also enforces the §"Required target-series coverage" list (30 series) and
     the category enum."""
     config = load_config()
     registry = config.get("uk", {})

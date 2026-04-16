@@ -281,7 +281,7 @@ uk:
     start_year: 1791
     end_year: 2016
     publication_lag_days: 0
-    description: USD/GBP exchange rate (USD per GBP), calendar-year average. Carried as a distinct key from uk_gbp_usd for per-use convenience per specs/data_pipeline/uk.md §"Required target-series coverage". The BoE workbook exposes only "$/£" (USD per GBP) directly; both keys point at the same source column. Inverting to GBP per USD for consumers that expect that convention belongs in a derived-indicators layer, not the registry.
+    description: USD per GBP (e.g., ~$4.86 at classical parity), calendar-year average. This is the direction the BoE workbook stores natively in the "$/£" column; GBP/USD is derivable as 1/x in consumer code. Inverting to GBP per USD for consumers that expect that convention belongs in a derived-indicators layer, not the registry.
     status: available
 
   uk_real_usd_gbp_rate:
