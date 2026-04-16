@@ -150,6 +150,7 @@ This project uses **multi-perspective periodic reviews** as a distinct feedback 
 | `review-dalio` | Faithful application of Dalio's big-cycle framework | Quarterly |
 | `review-practitioner` | Operational gap between backtest and real execution | Before strategy → `settled` |
 | `review-data-quality` | Measurement soundness, unaudited approximations, silent leakage | After significant splicing/indicator work |
+| `review-ai-workflow` | Project's AI-assisted spec-driven development workflow — audits CLAUDE.md + `.claude/` on three layers (spec quality, implementation fidelity, effectiveness) | Quarterly + after material governance changes |
 | `review-meta` | Evolution across the review series | Annually or after 3+ saved reviews |
 
 Slash commands invoke each: `/review-adversarial`, `/review-dalio`, `/review-practitioner`, `/review-data-quality`, `/review-meta`. An umbrella `/review-cycle` runs the four project-level reviewers in parallel (those whose cadence is due by default; all four with `--all`), then meta sequentially.
