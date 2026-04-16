@@ -87,7 +87,7 @@ uk:
 
 The pipeline MUST attempt to register these series. If the BoE workbook does not contain a series under an obvious sheet name, the series MUST be registered with `status: unavailable` and the `unavailable_followup_issue` pointing to #91, #92, #93, or a new issue — not omitted.
 
-The list was expanded on 2026-04-15 from the original 17 required series (per #52 Phase A issue description) to the 31 series below. The expansion incorporated series discovered during the archived exploratory implementation (at `archive/uk-phase-a-no-spec-2026-04-15`) — specifically the ones relevant to the monetization-mechanism, real-asset preservation, and reserve-currency-decline signatures that the Phase A research note identified as load-bearing for the umbrella thesis. The expansion is the spec catching up to what the exploratory research should have fed in upstream; see `docs/research/uk_sterling_transition.md` (when salvaged) for the exploratory phase.
+The list was expanded on 2026-04-15 from the original 17 required series (per #52 Phase A issue description) to the 30 series below. The expansion incorporated series discovered during the archived exploratory implementation (at `archive/uk-phase-a-no-spec-2026-04-15`) — specifically the ones relevant to the monetization-mechanism, real-asset preservation, and reserve-currency-decline signatures that the Phase A research note identified as load-bearing for the umbrella thesis. The expansion is the spec catching up to what the exploratory research should have fed in upstream; see `docs/research/uk_sterling_transition.md` (when salvaged) for the exploratory phase.
 
 **Fiscal:**
 - Government debt/GDP
@@ -126,7 +126,7 @@ The list was expanded on 2026-04-15 from the original 17 required series (per #5
 - Real GDP growth rate
 - Unemployment rate
 - Current account / GDP
-- Trade balance / GDP (goods+services only; distinct from current account which includes primary/secondary income). **Sign convention:** the BoE workbook's "Trade deficit" column stores deficit as positive; this differs from `uk_public_deficit_gdp` which uses negative=deficit. Downstream consumers MUST check the description field before aggregating across series.
+- Trade balance / GDP (goods+services only; distinct from current account which includes primary/secondary income). **Sign convention:** the BoE workbook's "Trade deficit" column stores deficit as positive; this differs from `uk_public_deficit_gdp` which uses negative=deficit. Downstream consumers SHOULD check the description field before aggregating across series. (This is a documentation-level convention, not test-enforced — no pipeline check asserts that description fields correctly flag sign conventions. If the convention proves inadequate, tighten by adding a spec-anchored test that verifies description-field contents for sign-sensitive series.)
 
 **Reserve status:**
 - Sterling share of global reserves — currently expected `status: unavailable` per issue #91
