@@ -268,22 +268,6 @@ uk:
     unavailable_followup_issue: 93
     description: Gold price in GBP — required for a floating-rate real-asset benchmark post-1971. Expected-unavailable per issue #93.
 
-  uk_gbp_usd:
-    name: GBP/USD Exchange Rate
-    category: asset_price
-    frequency: annual
-    source_sheet: "A1. Headline series"
-    source_column: "$/£ exchange rate"
-    source_column_units: "Calendar year average"
-    source_header_row: 3
-    source_units_row: 5
-    source_year_start_row: 7
-    start_year: 1791
-    end_year: 2016
-    publication_lag_days: 0
-    description: Sterling/USD exchange rate (USD per GBP), calendar-year average.
-    status: available
-
   uk_usd_gbp_rate:
     name: USD/GBP Exchange Rate
     category: asset_price

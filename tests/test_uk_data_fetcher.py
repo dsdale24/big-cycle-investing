@@ -130,10 +130,9 @@ _REQUIRED_TARGETS = {
     "uk_10yr_gilt",
     "uk_consols_yield",
     "uk_short_rate",
-    # Financial assets (5)
+    # Financial assets (4)
     "uk_share_prices",
     "uk_gold_gbp",
-    "uk_gbp_usd",
     "uk_usd_gbp_rate",
     "uk_real_usd_gbp_rate",
     # Real assets (4)
