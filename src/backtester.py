@@ -4,8 +4,12 @@ Core constraint: at each rebalancing date, the strategy can only see data
 that would have been available on that date. No look-ahead bias.
 """
 
+from functools import lru_cache
+from pathlib import Path
+
 import pandas as pd
 import numpy as np
+import yaml
 from dataclasses import dataclass, field
 from typing import Callable, Protocol
 
@@ -77,6 +81,90 @@ def default_cost_schedule(date: pd.Timestamp) -> float:
 # ---------------------------------------------------------------------------
 
 ASSET_CLASSES = ["equities", "long_bonds", "short_bonds", "gold", "commodities", "cash"]
+
+
+# ---------------------------------------------------------------------------
+# Publication-lag resolution (see specs/backtester.md § "Core invariant:
+# walk-forward constraint" and specs/data_pipeline/us.md § "Publication-lag
+# contract", resolves #72)
+# ---------------------------------------------------------------------------
+
+# By-frequency defaults applied when a series has no explicit
+# ``publication_lag_days`` in the registry. See specs/backtester.md § "Default
+# lags by frequency" — these are upper bounds on typical release lag, chosen
+# conservatively so "err on the side of missing a day of signal, not looking
+# ahead" holds.
+DEFAULT_LAG_BY_FREQUENCY: dict[str, int] = {
+    "daily": 1,
+    "weekly": 7,
+    "monthly": 30,
+    "quarterly": 45,
+    "annual": 180,
+}
+
+# Used when a series passed to ``run_backtest`` is not in the registry at all
+# (or has no resolvable frequency). Silent zero-lag is forbidden by the spec,
+# so we default to the most conservative known default rather than to 0.
+UNKNOWN_SERIES_DEFAULT_LAG_DAYS: int = DEFAULT_LAG_BY_FREQUENCY["annual"]
+
+_US_REGISTRY_PATH = Path(__file__).parent.parent / "configs" / "series.yaml"
+_UK_REGISTRY_PATH = Path(__file__).parent.parent / "configs" / "series_uk.yaml"
+
+
+@lru_cache(maxsize=1)
+def _load_lag_registry() -> dict[str, int]:
+    """Build a ``series_key -> publication_lag_days`` map from the registries.
+
+    Reads ``configs/series.yaml`` (FRED + Yahoo top-level groups) and
+    ``configs/series_uk.yaml`` (UK group) if present, resolves each entry's
+    lag via the rules in ``specs/backtester.md`` § "Default lags by frequency"
+    and ``specs/data_pipeline/us.md`` § "Publication-lag contract":
+
+    - If the entry declares ``publication_lag_days`` explicitly, use it.
+    - Otherwise, use ``DEFAULT_LAG_BY_FREQUENCY[entry['frequency']]``.
+    - If neither is resolvable (e.g. Yahoo entries have no ``frequency``),
+      the entry is omitted from the map; callers fall back to
+      ``UNKNOWN_SERIES_DEFAULT_LAG_DAYS`` via ``_resolve_publication_lag``.
+
+    Cached: the registry is static configuration; reloading on every
+    rebalance would be wasteful. Tests that mutate the YAML can call
+    ``_load_lag_registry.cache_clear()``.
+    """
+    registry: dict[str, int] = {}
+
+    for path, top_level_groups in (
+        (_US_REGISTRY_PATH, ("fred", "yahoo")),
+        (_UK_REGISTRY_PATH, ("uk",)),
+    ):
+        if not path.exists():
+            continue
+        with open(path) as f:
+            raw = yaml.safe_load(f) or {}
+        for group in top_level_groups:
+            entries = raw.get(group) or {}
+            for series_id, meta in entries.items():
+                if not isinstance(meta, dict):
+                    continue
+                explicit = meta.get("publication_lag_days")
+                if explicit is not None:
+                    registry[str(series_id)] = int(explicit)
+                    continue
+                freq = meta.get("frequency")
+                if freq in DEFAULT_LAG_BY_FREQUENCY:
+                    registry[str(series_id)] = DEFAULT_LAG_BY_FREQUENCY[freq]
+
+    return registry
+
+
+def _resolve_publication_lag(series_key: str) -> int:
+    """Return the publication-lag in days for ``series_key``.
+
+    Resolution order (see spec references in ``_load_lag_registry``):
+    1. Explicit ``publication_lag_days`` in the registry, or
+    2. By-frequency default if the entry has a ``frequency`` field, or
+    3. ``UNKNOWN_SERIES_DEFAULT_LAG_DAYS`` (most-conservative fallback).
+    """
+    return _load_lag_registry().get(series_key, UNKNOWN_SERIES_DEFAULT_LAG_DAYS)
 
 
 # ---------------------------------------------------------------------------
@@ -896,13 +984,20 @@ def run_backtest(
     for date in all_dates[all_dates >= start_dt]:
         # Rebalance?
         if date in rebal_set:
-            # Truncate data to what's available on this date
+            # Truncate data to what's available on this date in real time.
+            # Two constraints apply per specs/backtester.md § "Core invariant:
+            # walk-forward constraint": timestamp look-ahead AND publication-
+            # lag look-ahead. The framework subtracts each series' declared
+            # (or default) lag so strategies consume only real-time-available
+            # values. See specs/data_pipeline/us.md § "Publication-lag contract".
             avail = {}
             for key, df in indicator_data.items():
+                lag_days = _resolve_publication_lag(key)
+                cutoff = date - pd.Timedelta(days=lag_days)
                 if isinstance(df, pd.DataFrame):
-                    avail[key] = df.loc[:date]
+                    avail[key] = df.loc[:cutoff]
                 elif isinstance(df, pd.Series):
-                    avail[key] = df.loc[:date]
+                    avail[key] = df.loc[:cutoff]
 
             # Pass a copy so the strategy can't mutate runtime state.
             pre_rebalance_weights = {
