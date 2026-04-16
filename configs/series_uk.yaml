@@ -77,6 +77,22 @@ uk:
     description: Public sector total receipts (tax + other revenue) as % of nominal GDP.
     status: available
 
+  uk_public_spending_gdp:
+    name: UK Public Sector Total Managed Expenditure (% GDP)
+    category: fiscal
+    frequency: annual
+    source_sheet: "A1. Headline series"
+    source_column: "Public sector Total Managed Expenditure"
+    source_column_units: "as a % of nominal GDP"
+    source_header_row: 3
+    source_units_row: 5
+    source_year_start_row: 7
+    start_year: 1900
+    end_year: 2016
+    publication_lag_days: 0
+    description: UK public sector total managed expenditure (TME) as % of nominal GDP. Government-spending-to-GDP ratio; complements the receipts series for a full fiscal stance picture.
+    status: available
+
   # --- Monetary ---
   uk_bank_rate:
     name: UK Bank Rate (year-end)
@@ -108,6 +124,55 @@ uk:
     end_year: 2016
     publication_lag_days: 0
     description: UK consumer price inflation (year-on-year, %). BoE-curated long series combining historical cost-of-living indices with modern CPI.
+    status: available
+
+  uk_cpi:
+    name: UK Consumer Price Index
+    category: monetary
+    frequency: annual
+    source_sheet: "A1. Headline series"
+    source_column: "Consumer price index"
+    source_column_units: "2015=100"
+    source_header_row: 3
+    source_units_row: 5
+    source_year_start_row: 7
+    start_year: 1209
+    end_year: 2016
+    publication_lag_days: 0
+    description: UK consumer price index level (2015=100). BoE-curated long price level composite; inflation rate is derivable but level is the primary measurement needed for real-value deflation (real wages, real asset prices).
+    status: available
+
+  uk_monetary_base:
+    name: UK Monetary Base (M0)
+    category: monetary
+    frequency: annual
+    source_sheet: "A1. Headline series"
+    source_column: "Monetary base"
+    source_column_units: "Year end, £mn"
+    source_header_row: 3
+    source_units_row: 5
+    source_year_start_row: 7
+    start_year: 1833
+    end_year: 2016
+    publication_lag_days: 0
+    description: UK monetary base (narrow money / M0) in £mn, year-end. BoE-spliced series — direct monetization indicator tracking central-bank-issued money.
+    splice: "BoE-spliced monetary base / M0; components in A24 Money sheet"
+    status: available
+
+  uk_boe_balance_sheet_gdp:
+    name: Bank of England Balance Sheet (% GDP)
+    category: monetary
+    frequency: annual
+    source_sheet: "A1. Headline series"
+    source_column: "Bank of England Balance sheet"
+    source_column_units: "% of nominal GDP"
+    source_header_row: 3
+    source_units_row: 5
+    source_year_start_row: 7
+    start_year: 1701
+    end_year: 2016
+    publication_lag_days: 0
+    description: Bank of England balance sheet as % of nominal GDP. Load-bearing mode-4 indicator — the direct monetization signal used by the Phase A research note to identify QE-era parallels to the sterling-transition episode.
     status: available
 
   uk_broad_money:
@@ -161,6 +226,22 @@ uk:
     description: Short-rate proxy using Bank Rate calendar-year average. No separate long historical T-bill series in A1; Bank Rate is the BoE-provided short-rate proxy.
     status: available
 
+  uk_consols_yield:
+    name: UK Consols / Long-term Government Bond Yield
+    category: rates
+    frequency: annual
+    source_sheet: "A1. Headline series"
+    source_column: "Consols / long-term government bond yields"
+    source_column_units: "%, calendar year average"
+    source_header_row: 3
+    source_units_row: 5
+    source_year_start_row: 7
+    start_year: 1703
+    end_year: 2016
+    publication_lag_days: 0
+    description: UK Consols (perpetual annuities) yield, calendar-year average. Exposed independently from the uk_10yr_gilt splice so the pre-1930 long-rate signal can be used raw for transition-era analysis.
+    status: available
+
   # --- Financial assets ---
   uk_share_prices:
     name: UK Share Price Index
@@ -203,6 +284,38 @@ uk:
     description: Sterling/USD exchange rate (USD per GBP), calendar-year average.
     status: available
 
+  uk_usd_gbp_rate:
+    name: USD/GBP Exchange Rate
+    category: asset_price
+    frequency: annual
+    source_sheet: "A1. Headline series"
+    source_column: "$/£ exchange rate"
+    source_column_units: "Calendar year average"
+    source_header_row: 3
+    source_units_row: 5
+    source_year_start_row: 7
+    start_year: 1791
+    end_year: 2016
+    publication_lag_days: 0
+    description: USD/GBP exchange rate (USD per GBP), calendar-year average. Carried as a distinct key from uk_gbp_usd for per-use convenience per specs/data_pipeline/uk.md §"Required target-series coverage". The BoE workbook exposes only "$/£" (USD per GBP) directly; both keys point at the same source column. Inverting to GBP per USD for consumers that expect that convention belongs in a derived-indicators layer, not the registry.
+    status: available
+
+  uk_real_usd_gbp_rate:
+    name: Real USD/GBP Exchange Rate (CPI-based)
+    category: asset_price
+    frequency: annual
+    source_sheet: "A1. Headline series"
+    source_column: "Real $/£ exchange rate"
+    source_column_units: "Calendar year average, 1913=100"
+    source_header_row: 3
+    source_units_row: 5
+    source_year_start_row: 7
+    start_year: 1791
+    end_year: 2016
+    publication_lag_days: 0
+    description: Real (CPI-adjusted) USD/GBP exchange rate, 1913=100, calendar-year average. Preferred signal for transition-scale analysis — separates nominal FX moves from cross-country inflation differentials.
+    status: available
+
   # --- Real assets ---
   uk_agricultural_land:
     name: UK Agricultural Land Price
@@ -234,7 +347,72 @@ uk:
     description: UK wholesale / producer price index (2010=100) used as the commodity-price-level proxy per the spec's "UK commodity price index" target. A1 has no separate CRB-style commodities composite; WPI is the BoE-provided long series closest in intent.
     status: available
 
+  uk_house_prices:
+    name: UK House Price Index
+    category: real_asset
+    frequency: annual
+    source_sheet: "A1. Headline series"
+    source_column: "House price index"
+    source_column_units: "Calendar year average, Jan 2015 =100"
+    source_header_row: 3
+    source_units_row: 5
+    source_year_start_row: 7
+    start_year: 1845
+    end_year: 2016
+    publication_lag_days: 0
+    description: UK residential house price index (Jan 2015=100), calendar-year average. BoE-spliced long composite. Load-bearing — the Phase A research note found houses preserved real value materially better than listed equity through the sterling transition.
+    splice: "BoE-spliced composite; see A32 for underlying Samy/Knoll/Nationwide/Halifax/ONS components"
+    status: available
+
+  uk_oil_price_usd:
+    name: Oil Price in USD (per barrel)
+    category: real_asset
+    frequency: annual
+    source_sheet: "A1. Headline series"
+    source_column: "$ Oil prices"
+    source_column_units: "$ per barrel"
+    source_header_row: 3
+    source_units_row: 5
+    source_year_start_row: 7
+    start_year: 1861
+    end_year: 2016
+    publication_lag_days: 0
+    description: Oil price in USD per barrel. Source (per A47 notes) BP Statistical Review of World Energy; 1861-1944 US Average, 1945-1983 Arabian Light, 1984+ Brent dated. Isolates the 1973 / 1979 oil shocks distinct from the broader WPI.
+    status: available
+
   # --- Macro ---
+  uk_real_gdp:
+    name: UK Real GDP (level)
+    category: macro
+    frequency: annual
+    source_sheet: "A1. Headline series"
+    source_column: "Real UK GDP at market prices, geographically-consistent estimate based on post-1922 borders"
+    source_column_units: "£mn, Chained Volume measure, 2013 prices"
+    source_header_row: 3
+    source_units_row: 5
+    source_year_start_row: 7
+    start_year: 1700
+    end_year: 2016
+    publication_lag_days: 0
+    description: UK real GDP level (£mn, chained-volume, 2013 prices), geographically-consistent post-1922-border estimate. Level is the primary measurement; growth rate is exposed separately via uk_real_gdp_growth.
+    status: available
+
+  uk_nominal_gdp:
+    name: UK Nominal GDP (level)
+    category: macro
+    frequency: annual
+    source_sheet: "A1. Headline series"
+    source_column: "Nominal UK GDP at market prices"
+    source_column_units: "£mn"
+    source_header_row: 3
+    source_units_row: 5
+    source_year_start_row: 7
+    start_year: 1700
+    end_year: 2016
+    publication_lag_days: 0
+    description: UK nominal GDP at market prices (£mn), constant-border UK (GB+NI) definition. Used as the denominator for any ratio that the registry doesn't already supply pre-scaled.
+    status: available
+
   uk_real_gdp_growth:
     name: UK Real GDP Growth
     category: macro
@@ -283,6 +461,22 @@ uk:
     description: Current account balance as % of nominal GDP. GB only before 1816.
     status: available
 
+  uk_trade_deficit_gdp:
+    name: UK Trade Deficit (% GDP)
+    category: macro
+    frequency: annual
+    source_sheet: "A1. Headline series"
+    source_column: "Trade deficit"
+    source_column_units: "as a % of nominal GDP"
+    source_header_row: 3
+    source_units_row: 5
+    source_year_start_row: 7
+    start_year: 1816
+    end_year: 2016
+    publication_lag_days: 0
+    description: UK trade deficit (goods + services balance) as % of nominal GDP. Distinct from current account, which also includes primary and secondary income flows (interest / profits / transfers). BoE headline column is "Trade deficit"; positive values indicate a deficit per BoE convention — consumers should check sign with an early spot value.
+    status: available
+
   # --- Reserve status ---
   uk_sterling_reserve_share:
     name: Sterling Share of Global FX Reserves
@@ -292,3 +486,37 @@ uk:
     unavailable_reason: Sterling's share of global foreign-exchange reserves is not a BoE series. Requires IMF COFER (1999+) and academic reconstructions (Eichengreen, Chitu, Mehl) for pre-1999 coverage — out of scope for a BoE-only Phase A pipeline.
     unavailable_followup_issue: 91
     description: Sterling share of global official FX reserves — the central transition variable in the sterling→USD reserve-currency shift. Expected-unavailable per issue #91.
+
+  uk_nominal_eri:
+    name: UK Nominal Effective Exchange Rate Index
+    category: reserve_status
+    frequency: annual
+    source_sheet: "A1. Headline series"
+    source_column: "Nominal ERI"
+    source_column_units: "Calendar year average, 1913=100"
+    source_header_row: 3
+    source_units_row: 5
+    source_year_start_row: 7
+    start_year: 1870
+    end_year: 2016
+    publication_lag_days: 0
+    description: UK nominal effective exchange rate index (trade-weighted basket, 1913=100), calendar-year average. Broader reserve-currency-decline signal than GBP/USD alone; captures sterling depreciation against multiple trade partners through the reserve-currency transition.
+    splice: "BoE-spliced ERI; components in A33 Exchange rate data sheet"
+    status: available
+
+  uk_real_eri:
+    name: UK Real Effective Exchange Rate Index
+    category: reserve_status
+    frequency: annual
+    source_sheet: "A1. Headline series"
+    source_column: "Real ERI"
+    source_column_units: "Calendar year average, 1913=100"
+    source_header_row: 3
+    source_units_row: 5
+    source_year_start_row: 7
+    start_year: 1870
+    end_year: 2016
+    publication_lag_days: 0
+    description: UK real effective exchange rate index (CPI-adjusted trade-weighted basket, 1913=100), calendar-year average. Separates nominal trade-weighted depreciation from cross-country inflation differentials — preferred reserve-status signal for transition analysis.
+    splice: "BoE-spliced real ERI; components in A33 Exchange rate data sheet"
+    status: available
