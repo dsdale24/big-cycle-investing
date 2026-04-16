@@ -45,6 +45,8 @@ Primary source: **Bank of England "A Millennium of Macroeconomic Data" workbook*
 
 Phase A of this pipeline targets **annual series** from the `A*` sheets. Monthly series extension is explicitly out of scope for this phase (see issue #94).
 
+**A1 "Headline series" column-identification convention.** Multiple distinct series in A1 share the same Description row (row 3) — e.g., "Bank Rate" has both end-period and year-average variants; "Real UK GDP at market prices" has both level and growth variants. The `(source_sheet, source_column)` pair MUST NOT be treated as a primary key for A1; the registry's `source_column_units` field (Units row, row 5) is required for disambiguation. The spec's schema reflects this: `source_column_units` is not optional for A1-sourced series with shared Descriptions, even though a Description-only lookup may appear to work for other sheets.
+
 ### Cache and version pinning
 
 The workbook is pre-cached at `data/raw/uk/_source/millennium_of_macro_data.xlsx`. **No network fetch at any time.** This is the hard rule — see "Error behavior" below for what happens when the cache is missing.
@@ -83,38 +85,53 @@ uk:
 
 ### Required target-series coverage for Phase A
 
-The pipeline MUST attempt to register these series (per the #52 Phase A issue description). If the BoE workbook does not contain a series under an obvious sheet name, the series MUST be registered with `status: unavailable` and the `unavailable_followup_issue` pointing to #91, #92, #93, or a new issue — not omitted:
+The pipeline MUST attempt to register these series. If the BoE workbook does not contain a series under an obvious sheet name, the series MUST be registered with `status: unavailable` and the `unavailable_followup_issue` pointing to #91, #92, #93, or a new issue — not omitted.
+
+The list was expanded on 2026-04-15 from the original 17 required series (per #52 Phase A issue description) to the 30 series below. The expansion incorporated series discovered during the archived exploratory implementation (at `archive/uk-phase-a-no-spec-2026-04-15`) — specifically the ones relevant to the monetization-mechanism, real-asset preservation, and reserve-currency-decline signatures that the Phase A research note identified as load-bearing for the umbrella thesis. The expansion is the spec catching up to what the exploratory research should have fed in upstream; see `docs/research/uk_sterling_transition.md` (when salvaged) for the exploratory phase.
 
 **Fiscal:**
 - Government debt/GDP
 - Government deficit/GDP
-- Tax revenue/GDP
+- Government spending / GDP
+- Tax revenue / GDP
 
 **Monetary:**
 - Bank Rate (official policy rate)
-- CPI or RPI inflation
+- CPI level (price index)
+- CPI or RPI inflation (rate; derivable from level but commonly used directly)
 - Broad money aggregate (M3 or equivalent consistent long series)
+- Monetary base (narrow money; direct monetization indicator)
+- Bank of England balance sheet / GDP (direct monetization indicator — the load-bearing signal for mode-4 resolution)
 
 **Rates:**
 - 10-year gilt yield (or Consols + gilt splice with `splice` field populated)
+- Consols yield (pre-1930 long-term rate, exposed independently as well as via the gilt splice)
 - Short rate (T-bill or equivalent)
 
 **Financial assets:**
 - UK equity index (BoE consolidated long series)
 - Gold price in GBP — currently expected `status: unavailable` for post-1971 per issue #93
-- GBP/USD exchange rate
+- USD/GBP nominal exchange rate — the BoE workbook exposes USD-per-GBP natively (the "$/£" column in A1; ~$4.86 classical parity). GBP/USD is derivable as 1/x in consumer code, not registered as a separate series
+- Real USD/GBP exchange rate (CPI-adjusted; preferred signal for transition-scale analysis)
 
 **Real assets:**
-- UK land prices
-- UK commodity price index
+- UK land prices (agricultural)
+- UK house prices (residential; Phase A research note found houses preserved real value materially better than listed equity through the sterling transition)
+- UK commodity price index (broad / wholesale)
+- Oil price in USD (specific commodity; isolates 1973 and 1979 shocks that a broad index smooths over)
 
 **Macro:**
-- Real GDP growth
+- Nominal GDP level
+- Real GDP level
+- Real GDP growth rate
 - Unemployment rate
-- Current account / trade balance as % of GDP
+- Current account / GDP
+- Trade balance / GDP (goods+services only; distinct from current account which includes primary/secondary income). **Sign convention:** the BoE workbook's "Trade deficit" column stores deficit as positive; this differs from `uk_public_deficit_gdp` which uses negative=deficit. Downstream consumers SHOULD check the description field before aggregating across series. (This is a documentation-level convention, not test-enforced — no pipeline check asserts that description fields correctly flag sign conventions. If the convention proves inadequate, tighten by adding a spec-anchored test that verifies description-field contents for sign-sensitive series.)
 
 **Reserve status:**
 - Sterling share of global reserves — currently expected `status: unavailable` per issue #91
+- Nominal Effective Exchange Rate Index (ERI; trade-weighted GBP value — broader reserve-currency-decline signal than GBP/USD alone)
+- Real Effective Exchange Rate Index (ERI, CPI-adjusted)
 
 ### Invariants
 

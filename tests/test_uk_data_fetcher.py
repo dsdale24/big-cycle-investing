@@ -114,30 +114,43 @@ _ALLOWED_CATEGORIES = {
 }
 
 _REQUIRED_TARGETS = {
-    # Fiscal
+    # Fiscal (4)
     "uk_public_debt_gdp",
     "uk_public_deficit_gdp",
     "uk_public_receipts_gdp",
-    # Monetary
+    "uk_public_spending_gdp",
+    # Monetary (6)
     "uk_bank_rate",
+    "uk_cpi",
     "uk_cpi_inflation",
     "uk_broad_money",
-    # Rates
+    "uk_monetary_base",
+    "uk_boe_balance_sheet_gdp",
+    # Rates (3)
     "uk_10yr_gilt",
+    "uk_consols_yield",
     "uk_short_rate",
-    # Financial assets
+    # Financial assets (4)
     "uk_share_prices",
     "uk_gold_gbp",
-    "uk_gbp_usd",
-    # Real assets
+    "uk_usd_gbp_rate",
+    "uk_real_usd_gbp_rate",
+    # Real assets (4)
     "uk_agricultural_land",
+    "uk_house_prices",
     "uk_commodity_index",
-    # Macro
+    "uk_oil_price_usd",
+    # Macro (6)
+    "uk_nominal_gdp",
+    "uk_real_gdp",
     "uk_real_gdp_growth",
     "uk_unemployment_rate",
     "uk_current_account_gdp",
-    # Reserve status
+    "uk_trade_deficit_gdp",
+    # Reserve status (3)
     "uk_sterling_reserve_share",
+    "uk_nominal_eri",
+    "uk_real_eri",
 }
 
 
@@ -147,7 +160,7 @@ def test_registry_field_completeness():
     """specs/data_pipeline/uk.md test case 3: every available series has
     source_sheet, source_column, start_year, end_year, publication_lag_days;
     every unavailable series has unavailable_reason and unavailable_followup_issue.
-    Also enforces the §"Required target-series coverage" list (17 series) and
+    Also enforces the §"Required target-series coverage" list (30 series) and
     the category enum."""
     config = load_config()
     registry = config.get("uk", {})
