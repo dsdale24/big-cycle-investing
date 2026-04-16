@@ -1,7 +1,7 @@
 # Backtester Specification
 
 Status: **Stabilizing**
-Last updated: 2026-04-14 (data-quality surface added to BacktestResult — resolves the pre-2002 uncertainty open question from #31)
+Last updated: 2026-04-16 (walk-forward invariant strengthened to require per-series publication-lag truncation — resolves #72)
 
 ## Purpose
 
@@ -11,22 +11,81 @@ that can be fairly compared across strategies.
 
 ## Core invariant: walk-forward constraint
 
-**At rebalancing time T, the strategy MUST NOT access any data with a timestamp
-after T.** This is the single most important correctness property of the system.
+**At rebalancing time T, the strategy MUST NOT access any data that was not yet
+published in real-time on or before T.** This is the single most important
+correctness property of the system.
 
-Specifically:
-- All indicator data passed to `strategy.allocate(date, available_data)` must be
-  truncated to `data.loc[:date]`
-- Annual data published with a lag must respect that lag (e.g., 2024 Gini published
-  mid-2025 should not be visible until mid-2025)
-- Asset returns used for portfolio accounting are computed from prices on or before
-  date T — this is naturally satisfied since returns are computed from past prices
+Two classes of violation are ruled out by this invariant:
+
+1. **Timestamp look-ahead** — reading a series value whose timestamp is after T.
+   Ruled out by the framework truncating each series at T.
+2. **Publication-lag look-ahead** — reading a series value whose timestamp is
+   ≤ T but whose real-time release date was after T. Ruled out by the framework
+   also truncating at `T − publication_lag_days(series)`.
+
+### Framework-level enforcement
+
+`run_backtest` MUST truncate every indicator series passed to
+`strategy.allocate(date, available_data)` using both constraints:
+
+```
+available_data[series] = full_series.loc[: date − publication_lag_days(series)]
+```
+
+where `publication_lag_days(series)` is read from the series registry
+(`configs/series.yaml`; see `specs/data_pipeline/us.md` § "Walk-forward
+availability"). A series with no declared lag MUST default to a conservative
+lag matching its frequency (see below) — silent zero-lag is forbidden.
+
+This rule lives in the framework, not the strategy. Strategies SHOULD NOT
+re-apply `.loc[:date]` or lag adjustments themselves: the framework's contract
+is that `available_data` contains only real-time-available values at T. A
+strategy that re-truncates is defensively correct but redundant; a strategy
+that applies its own lag adjustments on top of the framework's is a spec
+violation (it under-reads).
+
+### Default lags by frequency
+
+If a series in the registry has no explicit `publication_lag_days`, the
+framework uses these conservative defaults:
+
+| Frequency | Default lag (days) | Rationale |
+|---|---|---|
+| `daily` | 1 | Market data, FRED daily rates; released same day or next |
+| `weekly` | 7 | Weekly release cadence; worst-case one cycle |
+| `monthly` | 30 | Covers BLS / Fed releases typically 10–30 days after reference month |
+| `quarterly` | 45 | BEA advance GDP estimate ~30 days after quarter-end; second estimate ~60; conservative midpoint |
+| `annual` | 180 | Covers most annual series (Gini, life expectancy, demographic) |
+
+The defaults are **upper bounds on the typical release lag**, not precise
+calendar-aware values. Precision (e.g., "CPI for reference month M is released
+on the 10th–14th of M+1, varying by calendar") is future refinement and
+should not block the base fix. Series whose actual lag is shorter can declare
+the shorter value explicitly in the registry.
+
+### Interaction with `.loc[:date]` inside strategies
+
+The existing convention inside some strategies (e.g., `BigCycleStrategy`) of
+re-applying `.loc[:date]` defensively is preserved for now — the framework's
+truncation is correct, and the redundant strategy-side truncation is a no-op
+on already-truncated input. It should not be extended to new strategies; new
+strategies should rely on the framework's contract.
 
 ### Test cases
 - Given an indicator that jumps from 0 to 100 on 2000-01-01, a strategy rebalancing
-  on 1999-12-31 must see 0, not 100.
-- Given annual data for year 2000, if publication lag is 6 months, a strategy
-  rebalancing on 2001-03-01 must NOT see the 2000 value.
+  on 1999-12-31 must see 0, not 100. (Timestamp look-ahead.)
+- Given annual data for year 2000, if publication lag is 180 days, a strategy
+  rebalancing on 2001-03-01 must NOT see the 2000 value (timestamp 2000-12-31
+  + 180 days = 2001-06-29, after rebalance date).
+- Given a monthly CPI series with lag 14 and a value timestamped 2020-03-01, a
+  strategy rebalancing on 2020-03-10 must NOT see the March value; a strategy
+  rebalancing on 2020-03-16 MAY see it.
+- Given a quarterly GDP series with lag 45 and a value timestamped 2020-01-01
+  (= Q1 reference date), a strategy rebalancing on 2020-02-10 must NOT see
+  the Q1 value; a strategy rebalancing on 2020-02-20 MAY see it.
+- A series with no declared lag and `frequency: quarterly` is truncated with
+  the 45-day default. Changing the registry to declare a lag of 0 on the same
+  series produces a strictly broader `available_data` at every rebalance.
 
 ## Asset returns
 

@@ -1,7 +1,7 @@
 # Data Pipeline Specification
 
 Status: **Stabilizing**
-Last updated: 2026-04-13
+Last updated: 2026-04-16 (publication_lag_days formalized in the series registry — resolves the Future-improvement item; fixes #72)
 
 ## Purpose
 
@@ -26,7 +26,12 @@ fred:
     category: one of the defined categories
     frequency: daily | weekly | monthly | quarterly | annual
     description: What this series measures
-    start_override: "YYYY-MM-DD"  # optional, overrides default start
+    start_override: "YYYY-MM-DD"       # optional, overrides default start
+    publication_lag_days: 14            # optional; integer days from reference
+                                        # date to real-time release. Defaults
+                                        # to the by-frequency table in
+                                        # specs/backtester.md § "Default lags
+                                        # by frequency" if omitted.
 ```
 
 ### Invariants
@@ -34,6 +39,7 @@ fred:
 - Every series must have `name`, `category`, and `description`
 - `start_override` must be a valid ISO date string if present
 - Yahoo Finance symbols with special characters (^, =, .) must be quoted
+- `publication_lag_days`, when present, must be a non-negative integer
 
 ## Fetching
 
@@ -79,21 +85,67 @@ def load_all_yahoo() -> dict[str, pd.DataFrame]
 
 ## Walk-forward data availability
 
-For backtesting, the data pipeline must support answering: "What data was available
-on date X?" This is currently handled by the backtester truncating data with
-`data.loc[:date]`, which works for most series but does NOT account for:
+For backtesting, the data pipeline must support answering: "What data was
+available on date X in real time?" Two distinct uncertainty classes bear on
+this question, and this spec treats them separately:
 
-- **Publication lag**: GDP is published ~1 month after quarter end. Annual data
-  (Gini, life expectancy) may lag 6-12 months.
-- **Revisions**: Many economic series are revised after initial publication.
+1. **Publication lag** — a series value whose reference timestamp is D has
+   a real-time release date of D + lag. The lag is a known property of the
+   series (CPI ~14 days after reference month; BEA advance GDP ~30 days after
+   quarter-end). **In scope.** See "Publication-lag contract" below.
+2. **Revisions** — many economic series are revised after initial publication.
+   The latest-snapshot stored in the parquet cache reflects the current
+   revised value, not the value an analyst would have seen on the original
+   release date. **Out of scope here**; tracked separately in #73 (ALFRED
+   vintage-data path).
 
-### Current approach (acceptable for now)
-- Assume all data is available on its timestamp date
-- This introduces a small look-ahead bias for series with publication lag
+### Publication-lag contract
 
-### Future improvement
-- Add `publication_lag_days` field to series registry
-- When truncating for walk-forward, subtract the lag: `data.loc[:date - lag]`
+The `publication_lag_days` field on each series entry (see "Schema" above)
+declares the integer-day lag from the series' reference timestamp to its
+real-time release. If the field is omitted for a series, the backtester
+framework uses a by-frequency default (see `specs/backtester.md` §
+"Default lags by frequency").
+
+**Who applies the lag.** The data pipeline itself does NOT apply lag-based
+truncation at fetch or load time — the parquet cache stores each value at
+its reference timestamp. Consumers that need real-time availability (the
+backtester, primarily) apply the lag at read time, driven by the
+per-series metadata. This keeps the cache canonical and shifts the
+walk-forward contract into one place: the framework-level truncation
+inside `run_backtest` (see `specs/backtester.md` § "Framework-level
+enforcement").
+
+Rationale for this split:
+- The cache stays source-of-truth for the raw data and doesn't become
+  dependent on a lag policy that may be revised as the project learns
+  about release calendars.
+- Non-backtesting consumers (notebooks, exploratory analysis) often want
+  the latest available value regardless of a 1975-forward replay; baking
+  lag into the cache would corrupt that view.
+- Lag values can be refined over time (e.g., calendar-precise release
+  dates replacing conservative integer-day estimates) without requiring
+  a re-fetch.
+
+### Invariants (walk-forward)
+
+- Every series declared in `configs/series.yaml` must have a `frequency`
+  that maps to a default lag, or an explicit `publication_lag_days` value
+- The backtester framework MUST NOT pass any value to a strategy whose
+  reference timestamp is after `rebalance_date − publication_lag_days`
+- A change to a series' `publication_lag_days` is a walk-forward-contract
+  change; backtest results before and after the change are not directly
+  comparable on that series' contribution
+
+### Known open refinements
+
+- Calendar-precise release dates (e.g., BLS CPI release schedule) would
+  sharpen lags currently given as conservative integers. Low priority;
+  the integer approximation errs in the "miss a day" direction, not the
+  "look ahead" direction.
+- Vintage-data replay via ALFRED (#73) is the long-run right answer for
+  both lag AND revision uncertainty; the current publication_lag_days
+  approach is a scoped fix for lag only.
 
 ---
 
