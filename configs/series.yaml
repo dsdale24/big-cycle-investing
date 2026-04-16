@@ -78,6 +78,12 @@ fred:
     category: inflation
     frequency: monthly
     description: Consumer Price Index for all urban consumers, seasonally adjusted
+    # BLS CPI is released ~10-18 days after the reference month; 14 is a
+    # conservative midpoint covering the typical "10th-14th of M+1" window.
+    # Source: BLS CPI release schedule (bls.gov/schedule/news_release/cpi.htm).
+    # See specs/backtester.md § "Default lags by frequency" for the (looser)
+    # monthly default of 30 that would apply if this field were absent.
+    publication_lag_days: 14
 
   PCEPI:
     name: PCE Price Index
@@ -125,6 +131,14 @@ fred:
     category: economy
     frequency: quarterly
     description: Real gross domestic product, seasonally adjusted
+    # BEA advance GDP estimate is released ~30 days after quarter-end (the
+    # "Gross Domestic Product, Advance Estimate" release); second and third
+    # estimates follow at ~60 / ~90 days with revisions. We use the advance-
+    # estimate lag since that's the first-available real-time value. Source:
+    # BEA GDP release schedule (bea.gov/news/schedule). The quarterly default
+    # of 45 would cover this; declaring 30 explicitly is tighter and matches
+    # the spec's worked example in § "Default lags by frequency".
+    publication_lag_days: 30
 
   UNRATE:
     name: Unemployment Rate
