@@ -69,6 +69,7 @@ _A running narrative of what the review series is telling us about project evolu
 
 - **2026-04-15 — external (human-invoked Claude session):** Identified central tension between transition-scale thesis and cyclical-scale operationalization. Surfaced the need for multi-perspective review infrastructure (this directory). Five concrete findings filed as issues #60–#64; resulting architecture design question tracked as #65.
 - **2026-04-15 — first internal cycle (adversarial / dalio / practitioner / data-quality + meta):** Four lenses converged independently on one finding — the project is operationalizing what the data can measure, not what the thesis claims to test. Adversarial names this as #52 (cross-national data) stalling while review-infrastructure proliferates; Dalio names the missing five-stage arc and under-covered empire drivers; practitioner names an unwritten ops manual (tax, roll drag, drawdown discipline); data-quality names silent look-ahead — every cyclical signal `BigCycleStrategy` trades on reads revised FRED values at rebalance time with no publication lag. Meta flags that #12 (personal strategy for Darren) being deferred while four reviewer types analyze the apparatus is a blind-spot signature.
+- **2026-04-15 — first ai-workflow review (baseline):** The governance regime works when applied — PR #97/#98 demonstrate real spec-first discipline with working feedback loops — but the regime was built, tested, and refined in a single session that produced 9 governance PRs for every 4 substantive ones, and no enforcement mechanism exists beyond the review-pr agent reading the rules back to itself. Twelve MUSTs with no automated enforcement; `docs/` branch prefix overloaded; maker-checker boundary and spec-first discipline held cleanly on `stable/` PRs. Positive: review-pr catches real issues (not rubber-stamping); spec-first produces genuinely better artifacts per the comparison.
 
 ## Index of reviews
 
@@ -79,3 +80,4 @@ _A running narrative of what the review series is telling us about project evolu
 | 2026-04-15 | dalio | `review-dalio` | [2026-04-15-dalio.md](2026-04-15-dalio.md) |
 | 2026-04-15 | practitioner | `review-practitioner` | [2026-04-15-practitioner.md](2026-04-15-practitioner.md) |
 | 2026-04-15 | data-quality | `review-data-quality` | [2026-04-15-data-quality.md](2026-04-15-data-quality.md) |
+| 2026-04-15 | ai-workflow | `review-ai-workflow` | [2026-04-15-ai-workflow.md](2026-04-15-ai-workflow.md) |
