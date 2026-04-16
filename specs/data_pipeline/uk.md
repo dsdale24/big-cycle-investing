@@ -83,38 +83,54 @@ uk:
 
 ### Required target-series coverage for Phase A
 
-The pipeline MUST attempt to register these series (per the #52 Phase A issue description). If the BoE workbook does not contain a series under an obvious sheet name, the series MUST be registered with `status: unavailable` and the `unavailable_followup_issue` pointing to #91, #92, #93, or a new issue — not omitted:
+The pipeline MUST attempt to register these series. If the BoE workbook does not contain a series under an obvious sheet name, the series MUST be registered with `status: unavailable` and the `unavailable_followup_issue` pointing to #91, #92, #93, or a new issue — not omitted.
+
+The list was expanded on 2026-04-15 from the original 17 required series (per #52 Phase A issue description) to the 31 series below. The expansion incorporated series discovered during the archived exploratory implementation (at `archive/uk-phase-a-no-spec-2026-04-15`) — specifically the ones relevant to the monetization-mechanism, real-asset preservation, and reserve-currency-decline signatures that the Phase A research note identified as load-bearing for the umbrella thesis. The expansion is the spec catching up to what the exploratory research should have fed in upstream; see `docs/research/uk_sterling_transition.md` (when salvaged) for the exploratory phase.
 
 **Fiscal:**
 - Government debt/GDP
 - Government deficit/GDP
-- Tax revenue/GDP
+- Government spending / GDP
+- Tax revenue / GDP
 
 **Monetary:**
 - Bank Rate (official policy rate)
-- CPI or RPI inflation
+- CPI level (price index)
+- CPI or RPI inflation (rate; derivable from level but commonly used directly)
 - Broad money aggregate (M3 or equivalent consistent long series)
+- Monetary base (narrow money; direct monetization indicator)
+- Bank of England balance sheet / GDP (direct monetization indicator — the load-bearing signal for mode-4 resolution)
 
 **Rates:**
 - 10-year gilt yield (or Consols + gilt splice with `splice` field populated)
+- Consols yield (pre-1930 long-term rate, exposed independently as well as via the gilt splice)
 - Short rate (T-bill or equivalent)
 
 **Financial assets:**
 - UK equity index (BoE consolidated long series)
 - Gold price in GBP — currently expected `status: unavailable` for post-1971 per issue #93
-- GBP/USD exchange rate
+- GBP/USD exchange rate (nominal, GBP per USD)
+- USD/GBP exchange rate (nominal, USD per GBP — inverse; carried for convenience, avoids per-use conversion)
+- Real GBP/USD exchange rate (CPI-adjusted; preferred signal for transition-scale analysis)
 
 **Real assets:**
-- UK land prices
-- UK commodity price index
+- UK land prices (agricultural)
+- UK house prices (residential; Phase A research note found houses preserved real value materially better than listed equity through the sterling transition)
+- UK commodity price index (broad / wholesale)
+- Oil price in USD (specific commodity; isolates 1973 and 1979 shocks that a broad index smooths over)
 
 **Macro:**
-- Real GDP growth
+- Nominal GDP level
+- Real GDP level
+- Real GDP growth rate
 - Unemployment rate
-- Current account / trade balance as % of GDP
+- Current account / GDP
+- Trade balance / GDP (goods+services only; distinct from current account which includes primary/secondary income)
 
 **Reserve status:**
 - Sterling share of global reserves — currently expected `status: unavailable` per issue #91
+- Nominal Effective Exchange Rate Index (ERI; trade-weighted GBP value — broader reserve-currency-decline signal than GBP/USD alone)
+- Real Effective Exchange Rate Index (ERI, CPI-adjusted)
 
 ### Invariants
 
