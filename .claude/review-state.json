@@ -5,6 +5,7 @@
     "dalio": 90,
     "practitioner": 180,
     "data-quality": 180,
+    "ai-workflow": 90,
     "meta": 365
   },
   "last_run": {
@@ -12,6 +13,7 @@
     "dalio": "2026-04-15",
     "practitioner": "2026-04-15",
     "data-quality": "2026-04-15",
+    "ai-workflow": null,
     "meta": "2026-04-15"
   }
 }

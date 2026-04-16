@@ -17,9 +17,10 @@ A review is not a living document. Once written, it's frozen. Aging reveals whet
 | dalio | Big-cycle framework alignment; what's missing from Dalio's taxonomy | Quarterly | `.claude/agents/review-dalio.md` |
 | practitioner | "If I put money in this today, what would actually happen?" | Before strategy → `settled` | `.claude/agents/review-practitioner.md` |
 | data-quality | Measurement soundness, unaudited approximations | After significant splicing / indicator work | `.claude/agents/review-data-quality.md` |
+| ai-workflow | Project's AI-assisted spec-driven development workflow — audits CLAUDE.md + `.claude/` on three layers (spec quality, implementation fidelity, effectiveness) | Quarterly + after material governance changes | `.claude/agents/review-ai-workflow.md` |
 | meta | Evolution across prior reviews; repeated concerns vs. addressed | Annually or after 3+ reviews accumulated | `.claude/agents/review-meta.md` |
 
-Slash commands invoke each agent: `/review-adversarial`, `/review-dalio`, `/review-practitioner`, `/review-data-quality`, `/review-meta`.
+Slash commands invoke each agent: `/review-adversarial`, `/review-dalio`, `/review-practitioner`, `/review-data-quality`, `/review-ai-workflow`, `/review-meta`.
 
 An umbrella command `/review-cycle` runs the four project-level reviewers in parallel, then meta sequentially. Flags: `--all` (ignore cadence, run all four) and `--ephemeral` (draft mode, see below).
 
