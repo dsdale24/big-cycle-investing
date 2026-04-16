@@ -99,6 +99,130 @@ def _reset_lag_registry_cache():
 
 @pytest.mark.unit
 @pytest.mark.spec
+def test_timestamp_lookahead_hidden_at_pre_jump_rebalance(monkeypatch):
+    """Spec: "Given an indicator that jumps from 0 to 100 on 2000-01-01, a
+    strategy rebalancing on 1999-12-31 must see 0, not 100. (Timestamp
+    look-ahead.)"
+
+    See specs/backtester.md § "Core invariant: walk-forward constraint →
+    Test cases", bullet 1.
+
+    Lag is pinned to 0 here deliberately so the test isolates timestamp
+    look-ahead (the rebalance date precedes the jump's timestamp) from
+    publication-lag truncation (which would hide the value for additional
+    days after its timestamp). With lag=0 and rebalance on 1999-12-31, the
+    only reason the 2000-01-01 value must be hidden is that it is
+    timestamped *after* the rebalance date.
+    """
+    monkeypatch.setattr(
+        backtester,
+        "_load_lag_registry",
+        lambda: {"JUMP": 0},
+    )
+
+    jump_series = pd.Series(
+        {
+            pd.Timestamp("1999-12-30"): 0.0,
+            pd.Timestamp("1999-12-31"): 0.0,
+            pd.Timestamp("2000-01-01"): 100.0,
+            pd.Timestamp("2000-01-03"): 100.0,
+        },
+        name="JUMP",
+    )
+
+    strat = CaptureStrategy()
+    returns = _flat_returns("1999-12-01", "2000-01-31")
+    run_backtest(
+        strat, returns,
+        indicator_data={"JUMP": jump_series},
+        start="1999-12-01",
+        rebalance_freq="W-FRI",
+    )
+
+    rebalance_date = pd.Timestamp("1999-12-31")
+    obs = _find_observation_for(strat.observations, rebalance_date)
+    assert obs is not None, f"no rebalance observed at {rebalance_date}"
+    visible_index = obs["JUMP"].index
+
+    assert pd.Timestamp("2000-01-01") not in visible_index, (
+        "Jump value timestamped 2000-01-01 must be hidden at a 1999-12-31 "
+        "rebalance (timestamp look-ahead)."
+    )
+    assert pd.Timestamp("1999-12-31") in visible_index, (
+        "Pre-jump value timestamped 1999-12-31 (lag=0) must be visible at "
+        "the 1999-12-31 rebalance."
+    )
+    # The most recent visible value must be the pre-jump 0.0, not 100.0.
+    most_recent_value = obs["JUMP"].iloc[-1]
+    assert most_recent_value == 0.0, (
+        f"Most recent visible value must be 0 (pre-jump), got {most_recent_value}"
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.spec
+def test_annual_series_with_180_day_lag_hides_year_end_value(monkeypatch):
+    """Spec: "Given annual data for year 2000, if publication lag is 180
+    days, a strategy rebalancing on 2001-03-01 must NOT see the 2000 value
+    (timestamp 2000-12-31 + 180 days = 2001-06-29, after rebalance date)."
+
+    See specs/backtester.md § "Core invariant: walk-forward constraint →
+    Test cases", bullet 2.
+
+    The test also asserts the symmetric "MAY see" behavior: a rebalance
+    after 2001-06-29 (the release date) may see the 2000 value, matching
+    the pattern established by the monthly/quarterly tests above.
+    """
+    monkeypatch.setattr(
+        backtester,
+        "_load_lag_registry",
+        lambda: {"ANNUAL": 180},
+    )
+
+    annual = pd.Series(
+        {
+            pd.Timestamp("1999-12-31"): 100.0,
+            pd.Timestamp("2000-12-31"): 110.0,
+        },
+        name="ANNUAL",
+    )
+
+    strat = CaptureStrategy()
+    returns = _flat_returns("2001-01-02", "2001-08-31")
+    # W-THU lands directly on 2001-03-01 and on 2001-07-05 (the first
+    # Thursday after the 2001-06-29 release date).
+    run_backtest(
+        strat, returns,
+        indicator_data={"ANNUAL": annual},
+        start="2001-01-02",
+        rebalance_freq="W-THU",
+    )
+
+    before = _find_observation_for(strat.observations, pd.Timestamp("2001-03-01"))
+    assert before is not None, "no rebalance observed at 2001-03-01"
+    assert pd.Timestamp("2000-12-31") not in before["ANNUAL"].index, (
+        "2000 year-end value must be hidden at 2001-03-01 (timestamp "
+        "2000-12-31 + 180 days = 2001-06-29, after rebalance)."
+    )
+    assert pd.Timestamp("1999-12-31") in before["ANNUAL"].index, (
+        "1999 year-end value should be visible (timestamp 1999-12-31 + 180 "
+        "days = 2000-06-28, well before 2001-03-01)."
+    )
+
+    # After 2001-06-29, the 2000 value MAY be visible. 2001-07-05 is the
+    # first W-THU rebalance past the release date.
+    after_release = _find_observation_for(
+        strat.observations, pd.Timestamp("2001-07-05")
+    )
+    assert after_release is not None, "no rebalance observed at 2001-07-05"
+    assert pd.Timestamp("2000-12-31") in after_release["ANNUAL"].index, (
+        "2000 year-end value MAY be visible at 2001-07-05 (after the "
+        "2001-06-29 release date)."
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.spec
 def test_monthly_cpi_lag_14_hides_march_value_before_release(monkeypatch):
     """Spec: "Given a monthly CPI series with lag 14 and a value timestamped
     2020-03-01, a strategy rebalancing on 2020-03-10 must NOT see the March
@@ -205,6 +329,11 @@ def test_quarterly_lag_45_hides_q1_value_before_release(monkeypatch):
         "Q1 value must be hidden at 2020-02-10 (lag 45 => cutoff 2019-12-27)"
     )
 
+    # The spec example names 2020-02-20 as the "MAY see it" date. We assert
+    # against 2020-02-24 because the backtest rebalance grid here is W-MON;
+    # both dates sit after the 2020-02-15 release, so either satisfies the
+    # spec's "MAY see" clause — 2020-02-24 is simply the W-MON rebalance
+    # that lands closest to (and after) the spec example date.
     after = _find_observation_for(strat.observations, pd.Timestamp("2020-02-24"))
     assert after is not None
     assert pd.Timestamp("2020-01-01") in after["GDPC1"].index, (
