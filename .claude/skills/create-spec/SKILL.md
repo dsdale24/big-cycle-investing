@@ -35,7 +35,7 @@ Before drafting, get from the coordinator (ask if not stated):
    - Country-specific extension: `specs/data_pipeline/{country}.md`
    - Other extension patterns: as appropriate to the existing `specs/` structure
 3. **Upstream exploration** — the `explore/` branch or research artifact that informed the spec. For the coordinator:
-   - If there IS upstream exploration: cite the branch name or research-note path; the skill will pull context from it
+   - If there is upstream exploration: cite the branch name or research-note path; the skill will pull context from it
    - If there is NOT upstream exploration: the coordinator MUST acknowledge "no upstream exploration; risk of spec drift during implementation is accepted" per CLAUDE.md's Workflow-section delegation-time rule
 4. **Baseline spec** (optional) — if this spec extends another (e.g., UK pipeline extends US pipeline), name the baseline. Extension specs use the inheritance-framing pattern below.
 5. **Related issues** — GitHub issue numbers for the feature, parent, and any known follow-up gaps
