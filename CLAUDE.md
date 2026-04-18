@@ -115,7 +115,7 @@ you're about to stabilize, write the spec BEFORE the refactor.
   explicitly acknowledge "no upstream exploration; risk of spec drift during
   implementation is accepted" (see Workflow section's "Typical phased flow").
 - **Coding-agent commit attribution:** coding agents MUST include a
-  `Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>`
+  `Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>`
   (or equivalent current-model) trailer on every commit they produce. The
   coordinator MUST state this requirement in every delegation prompt. Rationale:
   the maker-checker model's provenance boundary (coordinator-authored specs,
