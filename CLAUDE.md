@@ -195,9 +195,12 @@ branches locally to main — always land changes via a pull request.**
 | `explore/{phase}/{feature}` | Exploratory work — notebooks, research notes, prototypes | No |
 | `stable/{phase}/{feature}` | Stabilization — spec must be updated before implementation, tests required | Yes |
 | `fix/{description}` | Bug fixes — update spec if the bug revealed a missing invariant | If specced |
-| `docs/{description}` | Documentation, specs, CLAUDE.md changes | N/A |
+| `harness/{issue}-{slug}` | AI harness changes: CLAUDE.md, `.claude/*` (agents, commands, skills, hooks, settings), `specs/` files that govern the development workflow itself | N/A (the harness IS the governance spec) |
+| `docs/{description}` | User-facing documentation — README.md, `docs/research/*`, anything not under `.claude/` or governing the workflow | N/A |
 
-Examples: `explore/phase1/civilizational-indicators`, `stable/phase2/regime-classifier`, `fix/walk-forward-leak`
+Examples: `explore/phase1/civilizational-indicators`, `stable/phase2/regime-classifier`, `fix/walk-forward-leak`, `harness/112-adopt-harness-prefix`, `docs/gold-proxy-validation-note`
+
+**`harness/` vs `docs/` distinction.** Changes to `CLAUDE.md`, `.claude/agents/*`, `.claude/commands/*`, `.claude/skills/*`, `.claude/settings*.json`, and other governance-shaping files go on `harness/` branches. These are **executable governance** — a change to CLAUDE.md changes future agent behavior, not just future reader-facing documentation. User-facing docs (README.md, research notes, thesis evidence logs) go on `docs/`. The split gives the meta-reviewer and `review-ai-workflow` a clean grep surface: `git log main --oneline --grep='harness/'` returns an audit trail of every governance change.
 
 **How to choose `explore/` vs `stable/` — file-type heuristic (hard rule).**
 
