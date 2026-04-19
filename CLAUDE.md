@@ -190,6 +190,15 @@ See `reviews/README.md` for the full documentation.
 **All work happens on branches. Never commit directly to main, and never merge
 branches locally to main — always land changes via a pull request.**
 
+**Branch protection on `main` is enforced at the GitHub level** (configured 2026-04-19, per #111). The rule is mechanical, not discipline-only:
+
+- Every change to `main` requires a pull request (`required_pull_request_reviews.required_approving_review_count: 0` — PR required, approval not required since this is a solo project).
+- Linear history required (`required_linear_history: true`) — blocks merge commits, forces squash-merge or rebase. Aligns with #110's squash-merge default.
+- `enforce_admins: true` — the rule applies to the repo owner too. No admin bypass for "just this once" pushes. If a genuine emergency bypass is needed, toggle `enforce_admins: false` explicitly, push, toggle back — the toggle is itself an auditable action.
+- Force-pushes blocked; deletions blocked.
+
+The protection can be inspected with `gh api repos/dsdale24/big-cycle-investing/branches/main/protection`. To reproduce if ever revoked, the exact API call is in the PR body for #111. Status checks are deferred until CI exists (see #15).
+
 | Branch prefix | Purpose | Spec required? |
 |---------------|---------|----------------|
 | `explore/{phase}/{feature}` | Exploratory work — notebooks, research notes, prototypes | No |
