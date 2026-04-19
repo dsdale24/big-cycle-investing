@@ -195,7 +195,7 @@ branches locally to main — always land changes via a pull request.**
 | `explore/{phase}/{feature}` | Exploratory work — notebooks, research notes, prototypes | No |
 | `stable/{phase}/{feature}` | Stabilization — spec must be updated before implementation, tests required | Yes |
 | `fix/{description}` | Bug fixes — update spec if the bug revealed a missing invariant | If specced |
-| `harness/{issue}-{slug}` | AI harness changes: CLAUDE.md, `.claude/*` (agents, commands, skills, hooks, settings), `specs/` files that govern the development workflow itself | N/A (the harness IS the governance spec) |
+| `harness/{issue}-{slug}` | AI harness changes: CLAUDE.md, `.claude/*` (agents, commands, skills, hooks, settings) | N/A (the harness IS the governance spec) |
 | `docs/{description}` | User-facing documentation — README.md, `docs/research/*`, anything not under `.claude/` or governing the workflow | N/A |
 
 Examples: `explore/phase1/civilizational-indicators`, `stable/phase2/regime-classifier`, `fix/walk-forward-leak`, `harness/112-adopt-harness-prefix`, `docs/gold-proxy-validation-note`
