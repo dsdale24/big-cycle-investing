@@ -282,7 +282,7 @@ This separation is load-bearing enough to have its own failure mode documented: 
 
 Spawn pattern by task type:
 
-- **Code + tests task (most common for `feat/` branches that touch `src/`/`tests/`/`configs/`):** two sequential delegations. Coding agent first → testing agent spawned fresh (no conversational context from the coding-agent delegation) → if tests fail, redirect to coding agent to fix implementation, then testing agent re-runs. Iterate until green.
+- **Code + tests task (most common for `feat/` branches that touch `src/`/`tests/`/`configs/`/`scripts/`):** two sequential delegations. Coding agent first → testing agent spawned fresh (no conversational context from the coding-agent delegation) → if tests fail, redirect to coding agent to fix implementation, then testing agent re-runs. Iterate until green.
 - **Tests-only task** (filling in a test suite for already-reviewed existing code): testing agent is the only implementer. The decorative-tests risk doesn't apply — the agent didn't author the code being tested.
 - **Code-only task** (fix that changes internal behavior without expanding the spec's test cases): coding agent is the only implementer; `review-pr` is the verification. Should be rare — most code changes benefit from a corresponding testing-agent pass.
 
@@ -311,7 +311,7 @@ If you (the coordinator) catch yourself reaching for `Edit` or `Write` on a deny
 **The flow (for any PR whose diff crosses the coordinator deny list):**
 1. Coordinator reads the spec (or writes/updates it if needed — `specs/` is coordinator territory)
 2. Coordinator creates the branch and delegates implementation. The pattern depends on the task:
-   - **Code + tests task (most common for `feat/` branches touching `src/`/`tests/`/`configs/`):** two sequential delegations.
+   - **Code + tests task (most common for `feat/` branches touching `src/`/`tests/`/`configs/`/`scripts/`):** two sequential delegations.
      - **2a.** Coding agent: implements `src/` / `scripts/` / `configs/` per the spec. Reports back with diff and commit SHA.
      - **2b.** Testing agent: spawned fresh (do not continue the coding-agent conversation). Given only the spec and branch, writes `tests/` blind to the implementation and runs them. If tests fail, that is the signal that the coding agent has a bug — redirect to coding agent to fix the implementation, then testing agent re-runs. Iterate until green. Do NOT loosen tests or weaken the spec to accommodate failures.
    - **Tests-only task:** single testing-agent delegation.
