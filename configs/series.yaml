@@ -345,6 +345,12 @@ fred:
     frequency: monthly
     description: PPI Industry - Metals & Metal Products; monthly gold-return proxy for 1975-2000 before GC=F futures data begins
 
+  GOLDPMGBD228NLBM:
+    name: LBMA Gold PM Fix (USD)
+    category: asset_proxy
+    frequency: daily
+    description: LBMA Gold Fixing PM Auction Price in USD; daily gold-return series going back to 1968-04-01 via FRED. Candidate replacement for WPUSI019011 as pre-2000 gold proxy (see issue #107 and PR #106 validation failure).
+
   PPIACO:
     name: PPI All Commodities
     category: asset_proxy
