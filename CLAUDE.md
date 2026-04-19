@@ -103,19 +103,20 @@ you're about to stabilize, write the spec BEFORE the refactor.
   and add a test. The spec grows from real failures, not hypothetical ones.
 - **Every PR touching a specced component** should reference the relevant spec and
   note whether the spec was updated as part of the change.
-- **At delegation time:** before spawning a coding agent, the coordinator MUST
-  state the branch prefix in the delegation prompt and the rationale. If the
-  prefix is `stable/`, the spec MUST exist before the implementation delegation
-  (not written concurrently). The coordinator's first commit on a `stable/`
-  branch MUST be the spec; implementation delegations follow. This is enforced
-  by the file-type rule in the Workflow section — tests, `src/` code, or
-  `configs/` changes in a delegation prompt mean `stable/` and spec-first, no
-  exceptions. For `stable/` delegations, the coordinator MUST also cite the
-  upstream `explore/` branch or research artifact that informed the spec, or
-  explicitly acknowledge "no upstream exploration; risk of spec drift during
-  implementation is accepted" (see Workflow section's "Typical phased flow").
-- **Coding-agent commit attribution:** coding agents MUST include a
-  `Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>`
+- **At delegation time:** before spawning a coding agent or testing agent,
+  the coordinator MUST state the branch prefix in the delegation prompt and
+  the rationale. If the prefix is `stable/`, the spec MUST exist before the
+  implementation delegation (not written concurrently). The coordinator's
+  first commit on a `stable/` branch MUST be the spec; implementation
+  delegations follow. This is enforced by the file-type rule in the Workflow
+  section — tests, `src/` code, or `configs/` changes in a delegation prompt
+  mean `stable/` and spec-first, no exceptions. For `stable/` delegations,
+  the coordinator MUST also cite the upstream `explore/` branch or research
+  artifact that informed the spec, or explicitly acknowledge "no upstream
+  exploration; risk of spec drift during implementation is accepted" (see
+  Workflow section's "Typical phased flow").
+- **Agent commit attribution:** coding agents and testing agents MUST include a
+  `Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>`
   (or equivalent current-model) trailer on every commit they produce. The
   coordinator MUST state this requirement in every delegation prompt. Rationale:
   the maker-checker model's provenance boundary (coordinator-authored specs,
@@ -322,12 +323,12 @@ Worktree-based isolation may be revisited in a future Claude Code version
 where the wrinkles (settings inheritance, env-var propagation, hook semantics)
 are smoother.
 
-**Background by default:** Coding agents should run with `run_in_background: true`
-when the task is well-specified. The spec is the contract — if the spec is complete,
-the agent doesn't need to interrupt the user for clarification. The coordinator can
-continue other work and is notified when the agent completes. If the agent gets
-stuck, a review agent catches issues after completion; we don't lose time to
-mid-task interruptions.
+**Background by default:** Coding agents and testing agents should run with
+`run_in_background: true` when the task is well-specified. The spec is the
+contract — if the spec is complete, the agent doesn't need to interrupt the
+user for clarification. The coordinator can continue other work and is
+notified when the agent completes. If the agent gets stuck, `review-pr`
+catches issues after completion; we don't lose time to mid-task interruptions.
 
 Exceptions (run foreground): when the spec is still being negotiated, when the
 task is a tight feedback loop, or when the coordinator needs the result immediately
