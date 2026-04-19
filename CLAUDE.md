@@ -197,7 +197,7 @@ branches locally to main — always land changes via a pull request.**
 - `enforce_admins: true` — the rule applies to the repo owner too. No admin bypass for "just this once" pushes. If a genuine emergency bypass is needed, toggle `enforce_admins: false` explicitly, push, toggle back — the toggle is itself an auditable action.
 - Force-pushes blocked; deletions blocked.
 
-The protection can be inspected with `gh api repos/dsdale24/big-cycle-investing/branches/main/protection`. To reproduce if ever revoked, the exact API call is in the PR body for #111. Status checks are deferred until CI exists (see #15).
+The protection can be inspected with `gh api repos/dsdale24/big-cycle-investing/branches/main/protection`. To reproduce if ever revoked, the exact `PUT` payload is preserved in the landing commit for #111 (run `git log --grep='#111' --all` to find it). Status checks are deferred until CI exists (see #15).
 
 | Branch prefix | Purpose | Spec required? |
 |---------------|---------|----------------|
