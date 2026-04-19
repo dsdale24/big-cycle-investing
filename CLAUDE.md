@@ -304,7 +304,7 @@ If you (the coordinator) catch yourself reaching for `Edit` or `Write` on a deny
 
 **Merge method — squash-merge for deny-list PRs.** Any PR whose diff crosses the coordinator deny list (`src/`, `tests/`, `configs/`, `scripts/`, `notebooks/`, `docs/`, `data/`) is merged using **squash-merge** (`gh pr merge N --squash --body ...` or the GitHub UI's squash option). This collapses per-PR iteration history — CHANGES-REQUIRED back-and-forth, nit cleanups, testing-agent re-runs after coding-agent fixes — into one tidy commit on `main`. The PR thread retains the full iteration history for audit; `main`'s log stays a clean record of landed units of work. The squashed commit's body MUST include the final `## Pre-merge review` block, same as a regular merge.
 
-Pure `harness/` or `docs/` PRs that don't cross the deny list MAY use regular merge (`gh pr merge N --merge`). Their history tends to be a single coordinator commit anyway; the squash-vs-merge choice doesn't matter. When in doubt, prefer squash.
+`harness/` PRs (which touch only CLAUDE.md and `.claude/*`, not the deny list) MAY use regular merge (`gh pr merge N --merge`) since their history tends to be a single coordinator commit. A `docs/` PR in practice almost always touches `docs/*` and therefore crosses the deny list; a rare `docs/` PR that only touches non-deny-listed paths (e.g., `README.md` at repo root) may also regular-merge. When in doubt, prefer squash — it's always safe; regular merge is only the convenience option for low-churn governance/doc PRs.
 
 **Coding agents work in the main checkout, not worktrees.** Earlier versions of
 this workflow used `isolation: "worktree"` for filesystem isolation, but for a
