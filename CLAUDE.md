@@ -105,16 +105,18 @@ you're about to stabilize, write the spec BEFORE the refactor.
   note whether the spec was updated as part of the change.
 - **At delegation time:** before spawning a coding agent or testing agent,
   the coordinator MUST state the branch prefix in the delegation prompt and
-  the rationale. If the prefix is `stable/`, the spec MUST exist before the
-  implementation delegation (not written concurrently). The coordinator's
-  first commit on a `stable/` branch MUST be the spec; implementation
-  delegations follow. This is enforced by the file-type rule in the Workflow
-  section — tests, `src/` code, or `configs/` changes in a delegation prompt
-  mean `stable/` and spec-first, no exceptions. For `stable/` delegations,
-  the coordinator MUST also cite the upstream `explore/` branch or research
-  artifact that informed the spec, or explicitly acknowledge "no upstream
-  exploration; risk of spec drift during implementation is accepted" (see
-  Workflow section's "Typical phased flow").
+  the rationale. If the delegation will touch `src/`, `tests/`, `configs/`,
+  or `scripts/`, the spec MUST exist before the implementation delegation
+  (not written concurrently). The coordinator's first commit on such a
+  branch MUST be the spec; implementation delegations follow. This is
+  enforced by the file-type rule in the Workflow section — tests, `src/`
+  code, `configs/`, or `scripts/` changes in a delegation prompt mean
+  spec-first, no exceptions (except the narrow `fix/` behavior-preserving
+  case). For any such delegation, the coordinator MUST also cite the
+  upstream exploration (prior `feat/` research branch, `docs/research/*`
+  note, thesis evidence log entry) that informed the spec, or explicitly
+  acknowledge "no upstream exploration; risk of spec drift during
+  implementation is accepted" (see Workflow section's "Typical phased flow").
 - **Agent commit attribution:** coding agents and testing agents MUST include a
   `Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>`
   (or equivalent current-model) trailer on every commit they produce. The
@@ -124,8 +126,8 @@ you're about to stabilize, write the spec BEFORE the refactor.
   just from commit path-level inference. The requirement applies to both
   coordinator commits on branches agents will push to AND agent commits; the
   trailer is the durable signal that this commit participated in the
-  maker-checker flow. Review-pr flags missing trailers as a Nit on
-  `stable/` PRs; missing trailers across an entire PR is a Major finding.
+  maker-checker flow. Review-pr flags missing trailers as a Nit on PRs that
+  cross the deny list; missing trailers across an entire PR is a Major finding.
 
 ### Theses inform specs
 
@@ -201,39 +203,45 @@ The protection can be inspected with `gh api repos/dsdale24/big-cycle-investing/
 
 | Branch prefix | Purpose | Spec required? |
 |---------------|---------|----------------|
-| `explore/{phase}/{feature}` | Exploratory work — notebooks, research notes, prototypes | No |
-| `stable/{phase}/{feature}` | Stabilization — spec must be updated before implementation, tests required | Yes |
-| `fix/{description}` | Bug fixes — update spec if the bug revealed a missing invariant | If specced |
+| `feat/{issue}-{slug}` | New capability or research direction. Lifecycle (Exploring → Stabilizing → Settled) is carried by spec status, not branch prefix. | If diff touches `src/`, `tests/`, `configs/`, or `scripts/` (per file-type heuristic below) |
+| `fix/{issue}-{slug}` | Bug fixes. | If specced. Behavior-preserving fixes against already-specced invariants may skip spec-first (see file-type heuristic); bug revealing a missing invariant → spec update required |
 | `harness/{issue}-{slug}` | AI harness changes: CLAUDE.md, `.claude/*` (agents, commands, skills, hooks, settings) | N/A (the harness IS the governance spec) |
-| `docs/{description}` | User-facing documentation — README.md, `docs/research/*`, anything not under `.claude/` or governing the workflow | N/A |
+| `docs/{issue}-{slug}` | User-facing documentation — README.md, `docs/research/*`, anything not under `.claude/` or governing the workflow | N/A |
 
-Examples: `explore/phase1/civilizational-indicators`, `stable/phase2/regime-classifier`, `fix/walk-forward-leak`, `harness/112-adopt-harness-prefix`, `docs/gold-proxy-validation-note`
+Examples: `feat/107-lbma-gold-splice`, `fix/42-bond-nan-gap`, `harness/112-adopt-harness-prefix`, `docs/74-gold-proxy-validation-note`
 
 **`harness/` vs `docs/` distinction.** Changes to `CLAUDE.md`, `.claude/agents/*`, `.claude/commands/*`, `.claude/skills/*`, `.claude/settings*.json`, and other governance-shaping files go on `harness/` branches. These are **executable governance** — a change to CLAUDE.md changes future agent behavior, not just future reader-facing documentation. User-facing docs (README.md, research notes, thesis evidence logs) go on `docs/`. The split gives the meta-reviewer and `review-ai-workflow` a clean grep surface: `git log main --oneline --grep='harness/'` returns an audit trail of every governance change.
 
-**How to choose `explore/` vs `stable/` — file-type heuristic (hard rule).**
+**File-type heuristic — when does a PR need spec-first discipline? (hard rule).**
 
-The "about to be depended on by other components" criterion in the spec lifecycle is soft and has been misapplied (see governance-miss note below). Replace it with a file-type rule:
+Whether a PR is "stabilizing" is answered by looking at the diff's file paths, not by the branch prefix or coordinator judgment about intent. The rule:
 
-- **Any PR that creates or modifies files in `src/`, `tests/`, or `configs/` is stabilizing by default**, regardless of how exploratory the research intent feels. Such PRs MUST use `stable/` and the spec MUST be written first.
-- `explore/` MUST be used only when the work is purely in `notebooks/`, `docs/research/`, or `data/`.
-- **`fix/` exception for behavior-preserving fixes.** A `fix/` PR that touches `src/`, `tests/`, or `configs/` MAY skip the spec-first discipline when the fix is strictly behavior-preserving against an invariant the spec already pins (e.g., correcting a silently-wrong calculation that a spec clause specifies). If the bug reveals a *missing* invariant, the fix is no longer purely behavior-preserving — update the spec as part of the PR, which means spec-first applies. In doubt, treat it as `stable/`.
-- If a single stream of work needs both — a research notebook AND a new data-fetcher module — it MUST be split into two PRs: one `explore/` for the analytical output, one `stable/` for the infrastructure. Different branches, different review standards.
+- **Any PR that creates or modifies files in `src/`, `tests/`, `configs/`, or `scripts/` requires spec-first-then-implement**, regardless of how exploratory the research intent feels. The coordinator's first commit on such a branch MUST be the spec (or a spec update); implementation delegation follows.
+- **Exception: `fix/` branches for behavior-preserving fixes.** A `fix/` PR that touches `src/`, `tests/`, `configs/`, or `scripts/` MAY skip the spec-first discipline when the fix is strictly behavior-preserving against an invariant the spec already pins (e.g., correcting a silently-wrong calculation that a spec clause specifies). If the bug reveals a *missing* invariant, the fix is no longer purely behavior-preserving — update the spec as part of the PR, which means spec-first applies. In doubt, treat it as spec-first.
+- If a single stream of work needs both a research notebook AND a new data-fetcher module, it SHOULD be split into two PRs — one `feat/` PR for the research output (no spec-first needed if the diff stays in `notebooks/`, `docs/research/`, or `data/`), a separate `feat/` PR for the infrastructure (spec-first required). Different diffs, different review standards.
 - Mixed-scope in one PR is permitted only with explicit justification in the PR body and coordinator sign-off. The default is split.
 
-The goal of this rule: coordinator judgment is no longer required to decide "is this exploratory?" The decision is answered by looking at the diff's file paths. Tests alone (even if you feel the work is exploratory) are implicit stable-contract claims — exploratory work doesn't need them.
+The goal of this rule: coordinator judgment is no longer required to decide "does this need a spec?" The diff's file paths answer that question. Tests alone (even if the work feels exploratory) are implicit stable-contract claims — exploratory work doesn't need them.
 
-**Typical phased flow — `explore/` feeds `stable/`.** The two branch types are not competing modes; they are sequential phases of the same work. The typical flow:
+**Typical phased flow within a `feat/` branch.** The lifecycle (Exploring → Stabilizing → Settled) lives in the **spec**, not the branch prefix. Within a single `feat/` branch, a typical flow is:
 
-1. **`explore/` phase** — research output: notebooks, research notes under `docs/research/`, data exploration. Findings update relevant theses' evidence logs in `specs/theses/`.
-2. **Coordinator synthesis** — the `explore/` findings inform what a `stable/` spec should contain: what invariants matter, what edge cases exist, what scope to commit to.
-3. **`stable/` phase** — spec written first (per the file-type heuristic above), capturing what was learned; then implementation delegated against the spec.
+1. **Exploration** — research output: notebooks, research notes under `docs/research/`, data exploration. Findings update relevant theses' evidence logs in `specs/theses/`. Spec status for the affected component is "Exploring" or no spec yet. No file-type-heuristic trigger because the diff stays out of `src/`/`tests/`/`configs/`/`scripts/`.
+2. **Synthesis moment** — once the direction pans out, the coordinator authors a spec (or a spec update). This is the commit that advances the component's spec status from Exploring to Stabilizing. **Call this out deliberately** — without the old `explore/` → `stable/` branch transition forcing a pause, it's easy to skip straight to implementation and skip the synthesis. The spec-authoring commit IS the synthesis moment; don't skip it.
+3. **Stabilization** — coding-agent and testing-agent delegations against the spec. File-type heuristic now applies; all subsequent commits touching `src/`/`tests/`/`configs/`/`scripts/` must conform.
 
-Skipping the `explore/` phase and going directly to `stable/` — authoring a spec from first principles + the issue description, without upstream research informing it — is a distinct governance miss from violating the file-type heuristic, and the heuristic will not catch it. A `stable/` spec written with no upstream `explore/` inputs is a thin spec; the 2026-04-15 Phase A governance miss combined both failure modes (wrong branch prefix AND no explore phase), and the re-do on the correct branch still had to catch up on explore-phase discoveries during implementation (see PR #98's mid-PR spec updates for the worked example).
+Multi-PR variant: if phases 1 and 3 are substantial, they MAY ship as separate `feat/` PRs on consecutive branches (phase 1 on `feat/{issue}-research`, phase 3 on `feat/{issue}-stabilize`). This preserves the clean review surface for each phase. The synthesis still happens in the coordinator's spec-authoring commit on the stabilization branch.
 
-At delegation time, for any `stable/` delegation, the coordinator MUST either (a) cite the `explore/` branch or research artifact that informed the spec, or (b) explicitly acknowledge "no upstream exploration; spec written from first principles + issue description" and name the risk. Option (b) is permitted but should be rare; it means known spec-drift-during-implementation is expected.
+At delegation time, for any delegation that will touch `src/`/`tests/`/`configs/`/`scripts/`, the coordinator MUST either (a) cite the upstream exploration (prior `feat/` research branch, `docs/research/*` note, thesis evidence log entry) that informed the spec, or (b) explicitly acknowledge "no upstream exploration; spec written from first principles + issue description" and name the risk. Option (b) is permitted but should be rare; it means spec-drift-during-implementation is expected.
 
-**Governance-miss note (2026-04-15):** Phase A of issue #52 was delegated to `explore/uk-sterling-transition` when the work created `src/data_fetcher_uk.py`, `configs/series_uk.yaml`, `scripts/fetch_uk_data.py`, and `tests/test_uk_data_fetcher.py`. Per the file-type rule above, it should have been `stable/phase2/uk-data-pipeline` with a spec authored first. The coordinator accepted this miss explicitly, preserved the exploratory implementation as `archive/uk-phase-a-no-spec-2026-04-15`, and re-did the stabilization under the new regime. The re-do is the test of this rule's value; the archive is the preserved comparison artifact.
+**Archive, don't delete — abandoned `feat/` branches.** When a `feat/` branch doesn't pan out (research dead-ends, approach proves wrong, hypothesis falsified), the correct disposition is:
+
+1. Close the issue with a one-paragraph explanation — what was tried, what was learned, why it's abandoned. Link any thesis-evidence-log entries that were updated.
+2. Rename the branch: `git branch -m feat/{N}-{slug} archive/feat-{N}-{slug}-{YYYY-MM-DD}`. Push the archive branch.
+3. **Do not delete.** The commits are preserved as research evidence — a future maintainer asking "did we already try X?" or "what evidence does this thesis have?" should be able to find the work and read its conclusions.
+
+The archive-don't-delete rule is the same discipline that preserved `archive/uk-phase-a-no-spec-2026-04-15` after the 2026-04-15 governance miss. Failed explorations are evidence; evidence has value; deleting it is lossy.
+
+**Governance-miss note (2026-04-15, pre-`feat/` terminology):** Phase A of issue #52 was delegated to `explore/uk-sterling-transition` when the work created `src/data_fetcher_uk.py`, `configs/series_uk.yaml`, `scripts/fetch_uk_data.py`, and `tests/test_uk_data_fetcher.py`. Per the file-type rule, the spec should have been authored first. The coordinator accepted this miss explicitly, preserved the implementation as `archive/uk-phase-a-no-spec-2026-04-15`, and re-did the stabilization with a spec authored first. Under the current `feat/`-only model, the miss is still a miss (file-type heuristic violated, spec not written first) — the rule catches it regardless of prefix. The archive is the preserved comparison artifact. PR #98's mid-PR spec updates are the worked example of what "catching up on explore-phase discoveries during implementation" looks like and why the synthesis moment matters.
 
 **Tracking:** Bugs, features, and tasks are GitHub issues at dsdale24/big-cycle-investing.
 Labels: `exploring`, `stabilizing`, `bug`, `data`. See issue #13 for the full roadmap.
@@ -250,8 +258,9 @@ Labels: `exploring`, `stabilizing`, `bug`, `data`. See issue #13 for the full ro
   target, surface it to the user as a one-line reminder. Don't auto-run
   reviews; the coordinator decides. See "Periodic reviews" above.
 
-Reference issues in commits (e.g., "Fixes #1"). Commits from `stable/*`
-branches must reference the spec they conform to.
+Reference issues in commits (e.g., "Fixes #1"). Commits that touch
+`src/`, `tests/`, `configs/`, or `scripts/` must reference the spec they
+conform to.
 
 ### Maker-checker model
 
@@ -273,7 +282,7 @@ This separation is load-bearing enough to have its own failure mode documented: 
 
 Spawn pattern by task type:
 
-- **Code + tests task (most common for `stable/`):** two sequential delegations. Coding agent first → testing agent spawned fresh (no conversational context from the coding-agent delegation) → if tests fail, redirect to coding agent to fix implementation, then testing agent re-runs. Iterate until green.
+- **Code + tests task (most common for `feat/` branches that touch `src/`/`tests/`/`configs/`):** two sequential delegations. Coding agent first → testing agent spawned fresh (no conversational context from the coding-agent delegation) → if tests fail, redirect to coding agent to fix implementation, then testing agent re-runs. Iterate until green.
 - **Tests-only task** (filling in a test suite for already-reviewed existing code): testing agent is the only implementer. The decorative-tests risk doesn't apply — the agent didn't author the code being tested.
 - **Code-only task** (fix that changes internal behavior without expanding the spec's test cases): coding agent is the only implementer; `review-pr` is the verification. Should be rare — most code changes benefit from a corresponding testing-agent pass.
 
@@ -302,7 +311,7 @@ If you (the coordinator) catch yourself reaching for `Edit` or `Write` on a deny
 **The flow (for any PR whose diff crosses the coordinator deny list):**
 1. Coordinator reads the spec (or writes/updates it if needed — `specs/` is coordinator territory)
 2. Coordinator creates the branch and delegates implementation. The pattern depends on the task:
-   - **Code + tests task (most common for `stable/`):** two sequential delegations.
+   - **Code + tests task (most common for `feat/` branches touching `src/`/`tests/`/`configs/`):** two sequential delegations.
      - **2a.** Coding agent: implements `src/` / `scripts/` / `configs/` per the spec. Reports back with diff and commit SHA.
      - **2b.** Testing agent: spawned fresh (do not continue the coding-agent conversation). Given only the spec and branch, writes `tests/` blind to the implementation and runs them. If tests fail, that is the signal that the coding agent has a bug — redirect to coding agent to fix the implementation, then testing agent re-runs. Iterate until green. Do NOT loosen tests or weaken the spec to accommodate failures.
    - **Tests-only task:** single testing-agent delegation.
@@ -380,7 +389,7 @@ Every coding-agent or testing-agent delegation prompt must explicitly state:
   rather than inventing workarounds
 - **Commit trailer** — `Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>`
 - **Effort budget and early-exit conditions**
-- For `stable/` delegations, the upstream `explore/` branch or research artifact that informed the spec (or explicit acknowledgment that none exists — see "Typical phased flow" above)
+- For any delegation touching `src/`/`tests/`/`configs/`/`scripts/`, the upstream exploration (prior `feat/` research branch, `docs/research/*` note, thesis evidence log entry) that informed the spec, or explicit acknowledgment that none exists (see "Typical phased flow" above)
 
 **Why:** Separating writing from reviewing catches errors that flow-state coding misses.
 The coordinator stays at the spec level and never gets pulled into implementation details.
