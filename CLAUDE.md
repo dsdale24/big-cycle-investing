@@ -204,6 +204,7 @@ The "about to be depended on by other components" criterion in the spec lifecycl
 
 - **Any PR that creates or modifies files in `src/`, `tests/`, or `configs/` is stabilizing by default**, regardless of how exploratory the research intent feels. Such PRs MUST use `stable/` and the spec MUST be written first.
 - `explore/` MUST be used only when the work is purely in `notebooks/`, `docs/research/`, or `data/`.
+- **`fix/` exception for behavior-preserving fixes.** A `fix/` PR that touches `src/`, `tests/`, or `configs/` MAY skip the spec-first discipline when the fix is strictly behavior-preserving against an invariant the spec already pins (e.g., correcting a silently-wrong calculation that a spec clause specifies). If the bug reveals a *missing* invariant, the fix is no longer purely behavior-preserving — update the spec as part of the PR, which means spec-first applies. In doubt, treat it as `stable/`.
 - If a single stream of work needs both — a research notebook AND a new data-fetcher module — it MUST be split into two PRs: one `explore/` for the analytical output, one `stable/` for the infrastructure. Different branches, different review standards.
 - Mixed-scope in one PR is permitted only with explicit justification in the PR body and coordinator sign-off. The default is split.
 
@@ -242,13 +243,26 @@ branches must reference the spec they conform to.
 ### Maker-checker model
 
 The main Claude instance is a **coordinator**, not a coder. All code is written by
-subagents and reviewed before merging.
+subagents and reviewed before merging. Four roles:
 
 | Role | Who | Responsibility |
 |---|---|---|
-| **Coordinator** | Main instance | Spec management, task delegation, merge decisions. Does not write code. |
-| **Coding agent** | Subagent | Implements on a branch per the spec. Commits to the branch. |
-| **Review agent** | Subagent | Reviews implementation against the spec. Flags deviations, missing tests, edge cases. |
+| **Coordinator** | Main instance | Spec authorship, task delegation, merge decisions. Does not write code. |
+| **Coding agent** | Subagent (`subagent_type: coding-agent`) | Implements `src/`, `scripts/`, or `configs/` code against the spec. Commits to the branch. |
+| **Testing agent** | Subagent (`subagent_type: testing-agent`) | Writes `tests/` against the spec, **blind to the implementation**. Separate spawn from the coding agent. If tests fail, that's a coding-agent bug to fix — not a spec to loosen, not a test to weaken. |
+| **Review agent** | Subagent (e.g. `subagent_type: review-pr`) | Scope, code quality, governance-gate checks, docs alignment. Trusts that the testing agent already verified spec conformance via passing tests. |
+
+#### Why the testing agent is separate from the coding agent
+
+A single agent who writes both the implementation AND the tests writes **decorative tests** — tests that happen to pass against the code they just wrote but don't actually encode the spec's invariants. The same intuitions that shape the code shape the tests; blind spots propagate to both sides of the loop. A testing agent spawned separately, reading only the spec, writes tests that FAIL when the implementation diverges from the spec — which is what testing is for. Failing tests then become the definitive signal of an implementation-vs-spec mismatch, not a nuisance to silence.
+
+This separation is load-bearing enough to have its own failure mode documented: see the "post_date episode" worked example in `.claude/agents/testing-agent.md` (rule 5). A testing agent that reads implementation to fill spec gaps will align fixtures to the code's shape, produce green tests, and make bugs invisible. That risk is why the testing-agent charter treats implementation-reading as a last resort and fixture-realignment as requiring explicit spec authority.
+
+Spawn pattern by task type:
+
+- **Code + tests task (most common for `stable/`):** two sequential delegations. Coding agent first → testing agent spawned fresh (no conversational context from the coding-agent delegation) → if tests fail, redirect to coding agent to fix implementation, then testing agent re-runs. Iterate until green.
+- **Tests-only task** (filling in a test suite for already-reviewed existing code): testing agent is the only implementer. The decorative-tests risk doesn't apply — the agent didn't author the code being tested.
+- **Code-only task** (fix that changes internal behavior without expanding the spec's test cases): coding agent is the only implementer; `review-pr` is the verification. Should be rare — most code changes benefit from a corresponding testing-agent pass.
 
 #### Coordinator deny list
 
@@ -272,15 +286,17 @@ The coordinator's editable surface is everything else: `CLAUDE.md`, `.claude/` (
 
 If you (the coordinator) catch yourself reaching for `Edit` or `Write` on a deny-listed path, stop and delegate. Even one-line fixes go through an agent — the boundary is what makes the maker-checker model work, and the boundary erodes one "just this once" at a time.
 
-**The flow:**
-1. Coordinator reads the spec (or writes/updates it if needed)
-2. Coordinator creates the branch and delegates to a coding agent with the spec and context
-3. Coding agent implements and commits on the current branch
-4. Coordinator delegates to a review agent to check implementation against spec
-5. Coordinator reviews findings, approves or sends back
-6. Coordinator pushes the branch and opens a pull request (never merges locally to main)
-7. Before merging, coordinator runs a **pre-merge review** of the PR — either via `/review-pr <number>` (which delegates to the `review-pr` subagent defined at `.claude/agents/review-pr.md`) or by spawning the agent directly with `Agent(subagent_type="review-pr", ...)`. The agent's report ends with an embedded `## Pre-merge review` block; the coordinator (or `/review-pr`) posts that block verbatim as a PR comment immediately, and on merge approval includes the same block in the merge commit body via `gh pr merge --body`. Same review lands in two durable places: the PR thread on GitHub (visible to author and future readers) and the merge commit (permanent, surfaces in `git log`). Merge only on PASS or PASS-WITH-NITS (see #15 for the Level 1/2/3 escalation path toward CI enforcement)
-8. Work is landed by merging the PR — this preserves a reviewable artifact, keeps a searchable history, and gives CI and the review agent a surface to hook into
+**The flow (for any PR whose diff crosses the coordinator deny list):**
+1. Coordinator reads the spec (or writes/updates it if needed — `specs/` is coordinator territory)
+2. Coordinator creates the branch and delegates implementation. The pattern depends on the task:
+   - **Code + tests task (most common for `stable/`):** two sequential delegations.
+     - **2a.** Coding agent: implements `src/` / `scripts/` / `configs/` per the spec. Reports back with diff and commit SHA.
+     - **2b.** Testing agent: spawned fresh (do not continue the coding-agent conversation). Given only the spec and branch, writes `tests/` blind to the implementation and runs them. If tests fail, that is the signal that the coding agent has a bug — redirect to coding agent to fix the implementation, then testing agent re-runs. Iterate until green. Do NOT loosen tests or weaken the spec to accommodate failures.
+   - **Tests-only task:** single testing-agent delegation.
+   - **Code-only task** (rare — behavior-preserving fix whose spec's test cases are already covered): single coding-agent delegation.
+3. Coordinator pushes the branch and opens a pull request (never merges locally to main)
+4. Coordinator runs a **pre-merge review** of the PR — either via `/review-pr <number>` (which delegates to the `review-pr` subagent defined at `.claude/agents/review-pr.md`) or by spawning the agent directly with `Agent(subagent_type="review-pr", ...)`. The agent checks scope, code quality, governance gates, and docs alignment; spec conformance is already verified by the passing tests from step 2b. The agent's report ends with an embedded `## Pre-merge review` block; the coordinator (or `/review-pr`) posts that block verbatim as a PR comment immediately (regardless of verdict), and on merge approval includes the same block in the merge commit body via `gh pr merge --body`. Same review lands in two durable places: the PR thread (visible to author and future readers) and the merge commit (permanent, surfaces in `git log`). Merge only on PASS or PASS-WITH-NITS (see #15 for the Level 1/2/3 escalation path toward CI enforcement).
+5. Work is landed by merging the PR — this preserves a reviewable artifact, keeps a searchable history, and gives CI and the review agent a surface to hook into.
 
 **Coding agents work in the main checkout, not worktrees.** Earlier versions of
 this workflow used `isolation: "worktree"` for filesystem isolation, but for a
@@ -340,11 +356,14 @@ exact command and error" has succeeded. An agent that creates a wrapper script
 to launder the same command past the allowlist has failed the contract even
 if the code technically works.
 
-Every coding agent delegation prompt must explicitly state:
+Every coding-agent or testing-agent delegation prompt must explicitly state:
 - **Scope boundaries** — list what is out of scope (config files, unrelated
   modules, other components' specs)
 - **Report-don't-patch** — if a tool or script can't run, report it back
   rather than inventing workarounds
+- **Commit trailer** — `Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>`
+- **Effort budget and early-exit conditions**
+- For `stable/` delegations, the upstream `explore/` branch or research artifact that informed the spec (or explicit acknowledgment that none exists — see "Typical phased flow" above)
 
 **Why:** Separating writing from reviewing catches errors that flow-state coding misses.
 The coordinator stays at the spec level and never gets pulled into implementation details.
