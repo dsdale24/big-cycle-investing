@@ -52,7 +52,7 @@ Steps:
 6. **On user's merge approval**, include the same embedded block in the merge commit body so the review is preserved in git history (PR comments live on GitHub; merge commit bodies live in the repo forever):
 
    ```
-   gh pr merge $ARGUMENTS --merge --body "$(cat <<'EOF'
+   gh pr merge $ARGUMENTS --squash --body "$(cat <<'EOF'
    ## Pre-merge review
    ...
    EOF
