@@ -1,5 +1,5 @@
 {
-  "last_version": "2.1.108",
-  "last_checked": "2026-04-14",
-  "notes": "2.1.107/108: 0 #33 ticks; relevant: ENABLE_PROMPT_CACHING_1H, Skill-tool discovers built-in slash commands, /recap feature."
+  "last_version": "2.1.119",
+  "last_checked": "2026-04-24",
+  "notes": "2.1.113-119: no action items. Worktree fixes landed (stale-worktree cleanup, PR linking) but load-bearing wrinkles (env-var/settings inheritance, permission slicing, data-cache, hook semantics) unchanged — no revisit of isolation model. Notable: native macOS/Linux binary (2.1.113), /ultrareview UI improvements (touches #108), MCP parallel reconnect (2.1.119)."
 }
