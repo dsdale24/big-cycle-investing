@@ -247,12 +247,17 @@ The archive-don't-delete rule is the same discipline that preserved `archive/uk-
 Labels: `exploring`, `stabilizing`, `bug`, `data`. See issue #13 for the full roadmap.
 
 **At session start (or when resuming after a gap):**
-- If `.claude/skills/changelog-check/state.json`'s `last_checked` is more than
-  1 day old, invoke `/skill changelog-check` to see if any Claude Code
-  updates affect this project's workflow. Claude Code ships frequently
-  (multiple releases most weeks), so a daily cadence catches fixes close to
-  when they land. The skill reports new entries in three buckets (ticks #33
-  / likely relevant / worth noting) and asks the coordinator what to act on.
+- If `~/.claude/projects/<project-slug>/claude-develops-fast.json`'s
+  `last_checked` is more than 1 day old, invoke `/claude-develops-fast` to see
+  if any recent Claude Code / Anthropic API / Agent SDK releases or
+  anthropic.com/news posts affect this project's workflow. Claude products ship
+  frequently (Claude Code alone releases multiple times most weeks), so a daily
+  cadence catches fixes close to when they land. The skill reports items in
+  three buckets (ticks an open issue / likely relevant / worth noting) and asks
+  the coordinator what to act on. The skill is user-level
+  (`~/.claude/skills/claude-develops-fast/`) and project-agnostic — it infers
+  relevance from this project's `CLAUDE.md` + open issues, with no baked-in
+  keyword list.
 - Check open issues with `gh issue list` before starting substantive work.
 - Check `.claude/review-state.json` — if any reviewer type is past its cadence
   target, surface it to the user as a one-line reminder. Don't auto-run
